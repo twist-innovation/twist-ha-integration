@@ -1,0 +1,15 @@
+{
+  "domain": "twist_local",
+  "name": "Twist Local",
+  "codeowners": [
+    "@sgoudsme"
+  ],
+  "config_flow": true,
+  "dependencies": ["mqtt"],
+  "documentation": "https://www.home-assistant.io/integrations/twist_local",
+  "homekit": {},
+  "iot_class": "local_push",
+  "requirements": [],
+  "ssdp": [],
+  "zeroconf": []
+}
