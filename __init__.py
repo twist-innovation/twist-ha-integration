@@ -40,6 +40,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     tw_l = twist_local.TwistLocal(entry.data["network"], hass)
     await tw_l.check_connection()
+    await tw_l.scan_for_devices()
 
     hass.data[DOMAIN] = tw_l
 

@@ -23,10 +23,7 @@ class TwistLocal:
 
         self.manufacturer = "Ledsgo"
 
-        self.shutters = [
-            TbShutter("1147007262", "1147007262", self),
-            TbShutter("1410948014", "1410948014", self),
-        ]
+        self.shutters = list()
 
     async def check_connection(self):
         """Check if we can connect to the gateway"""
@@ -70,26 +67,32 @@ class TwistLocal:
 
         return True
 
-    async def scan_for_devices(self, cb: Callable[[], None]):
+    async def scan_for_devices(self):
         """scan for devices."""
         if self.connected:
 
             @callback
             def message_received(msg):
                 """Handle new MQTT messages."""
-                # if "pong" in msg.topic:
-                #     tp_split = msg.topic.split("/")
-                #     device_id = tp_split[2]
-                #     tb_shutter = TbShutter(device_id, device_id, self)
-                #     cb(tb_shutter)
+                if "pong" in msg.topic:
+                    tp_split = msg.topic.split("/")
+                    device_id = tp_split[2]
+                    existing_shutter = [
+                        x for x in self.shutters if x.shutter_id == device_id
+                    ]
+                    if len(existing_shutter) == 0:
+                        tb_shutter = TbShutter(device_id, device_id, self)
+                        self.shutters.append(tb_shutter)
 
-            await mqtt.async_subscribe(
+            unsubscribe = await mqtt.async_subscribe(
                 self.hass,
                 f"{self.network_id}/receive/#",
                 message_received,
                 0,
             )
 
+        timeout_cnt = 0
+        while timeout_cnt < 2:
             await mqtt.async_publish(
                 self.hass,
                 f"{self.network_id}/send/gateway/4294967295/ping",
@@ -97,6 +100,11 @@ class TwistLocal:
                 0,
                 False,
             )
+
+            await asyncio.sleep(1)
+            timeout_cnt += 1
+
+        unsubscribe()
 
 
 class TbShutter:
@@ -107,6 +115,7 @@ class TbShutter:
         self._id = shutter_id
         self.twist_local = twist_local
         self.name = name
+        self._callbacks = set()
         self._loop = asyncio.get_event_loop()
         self._target_position = 100
         self._current_position = 100
@@ -130,7 +139,8 @@ class TbShutter:
 
         State is announced a random number of seconds later.
         """
-        self._current_position = position
+        self._target_position = position
+        await self.publish_updates()
 
     @property
     def online(self) -> float:
@@ -138,6 +148,22 @@ class TbShutter:
         # The dummy roller is offline about 10% of the time. Returns True if online,
         # False if offline.
         return True
+
+    def register_callback(self, callback: Callable[[], None]) -> None:
+        """Register callback, called when Roller changes state."""
+        self._callbacks.add(callback)
+
+    def remove_callback(self, callback: Callable[[], None]) -> None:
+        """Remove previously registered callback."""
+        self._callbacks.discard(callback)
+
+    # In a real implementation, this library would call it's call backs when it was
+    # notified of any state changeds for the relevant device.
+    async def publish_updates(self) -> None:
+        """Schedule call all registered callbacks."""
+        self._current_position = self._target_position
+        for callback in self._callbacks:
+            callback()
 
 
 class CannotConnect(HomeAssistantError):

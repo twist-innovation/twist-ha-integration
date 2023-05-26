@@ -36,7 +36,7 @@ async def async_setup_entry(
     # @callback
     # def new_device(tbshutter):
     #     # Add all entities to HA
-    #     async_add_entities([TwistShutter(tbshutter)])
+    #     async_add_entities([TwistShutter(tbshutter, config_entry.entry_id)], True)
 
     # await tw_l.scan_for_devices(new_device)
 
@@ -87,14 +87,12 @@ class TwistShutter(CoverEntity):
         # called where ever there are changes.
         # The call back registration is done once this entity is registered with HA
         # (rather than in the __init__)
-        pass
-        # self._roller.register_callback(self.async_write_ha_state)
+        self._shutter.register_callback(self.async_write_ha_state)
 
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
-        pass
         # The opposite of async_added_to_hass. Remove any registered call backs here.
-        # self._roller.remove_callback(self.async_write_ha_state)
+        self._shutter.remove_callback(self.async_write_ha_state)
 
     # Information about the devices that is partially visible in the UI.
     # The most critical thing here is to give this entity a name so it is displayed
