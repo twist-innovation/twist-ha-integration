@@ -5,15 +5,16 @@ from typing import Any
 
 # These constants are relevant to the type of entity we are using.
 # See below for how they are used.
+
+
 from homeassistant.components.cover import (
-    ATTR_POSITION,
-    SUPPORT_CLOSE,
-    SUPPORT_OPEN,
-    SUPPORT_SET_POSITION,
     CoverEntity,
+    CoverEntityFeature,
+    ATTR_POSITION,
 )
+
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
@@ -58,7 +59,12 @@ class TwistShutter(CoverEntity):
     # imported above, we can tell HA the features that are supported by this entity.
     # If the supported features were dynamic (ie: different depending on the external
     # device it connected to), then this should be function with an @property decorator.
-    supported_features = SUPPORT_SET_POSITION | SUPPORT_OPEN | SUPPORT_CLOSE
+    supported_features = (
+        CoverEntityFeature.OPEN
+        | CoverEntityFeature.CLOSE
+        | CoverEntityFeature.STOP
+        | CoverEntityFeature.SET_POSITION
+    )
 
     def __init__(self, shutter: TbShutter, entry_id: str) -> None:
         """Initialize the sensor."""
@@ -88,11 +94,13 @@ class TwistShutter(CoverEntity):
         # The call back registration is done once this entity is registered with HA
         # (rather than in the __init__)
         self._shutter.register_callback(self.async_write_ha_state)
+        await self._shutter.start_listening()
 
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
         # The opposite of async_added_to_hass. Remove any registered call backs here.
         self._shutter.remove_callback(self.async_write_ha_state)
+        self._shutter.stop_listening()
 
     # Information about the devices that is partially visible in the UI.
     # The most critical thing here is to give this entity a name so it is displayed
@@ -173,3 +181,6 @@ class TwistShutter(CoverEntity):
     async def async_set_cover_position(self, **kwargs: Any) -> None:
         """Close the cover."""
         await self._shutter.set_position(kwargs[ATTR_POSITION])
+
+    async def async_stop_cover(self, **kwargs: Any) -> None:
+        await self._shutter.stop_motor()

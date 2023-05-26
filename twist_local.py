@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 from homeassistant.core import callback
 from homeassistant.components import mqtt
@@ -81,7 +82,7 @@ class TwistLocal:
                         x for x in self.shutters if x.shutter_id == device_id
                     ]
                     if len(existing_shutter) == 0:
-                        tb_shutter = TbShutter(device_id, device_id, self)
+                        tb_shutter = TbShutter(device_id, device_id, self, self.hass)
                         self.shutters.append(tb_shutter)
 
             unsubscribe = await mqtt.async_subscribe(
@@ -110,18 +111,45 @@ class TwistLocal:
 class TbShutter:
     """TB shutter model."""
 
-    def __init__(self, shutter_id: str, name: str, twist_local: TwistLocal) -> None:
+    def __init__(
+        self, shutter_id: str, name: str, twist_local: TwistLocal, hass
+    ) -> None:
         """Init dummy roller."""
         self._id = shutter_id
         self.twist_local = twist_local
         self.name = name
         self._callbacks = set()
         self._loop = asyncio.get_event_loop()
-        self._target_position = 100
-        self._current_position = 100
+        self._current_position = 0
         self.moving = 0
         self.firmware_version = "1.3.0.1"
         self.model = "TB Shutter"
+        self.hass = hass
+
+    async def start_listening(self) -> None:
+        """Start listening for state changes."""
+
+        @callback
+        async def message_received(msg):
+            """Handle new MQTT messages."""
+
+            payload = msg.payload
+
+            context = json.loads(payload)
+
+            if context["model_index"] == 0:
+                self._current_position = context["context"][0]["value"] / 65535 * 100
+                await self.publish_updates()
+
+        self.unsubscribe = await mqtt.async_subscribe(
+            self.hass,
+            f"{self.twist_local.network_id}/receive/{self._id}/model/context",
+            message_received,
+            0,
+        )
+
+    def stop_listening(self) -> None:
+        self.unsubscribe()
 
     @property
     def shutter_id(self) -> str:
@@ -134,13 +162,39 @@ class TbShutter:
         return self._current_position
 
     async def set_position(self, position: int) -> None:
-        """
-        Set dummy cover to the given position.
+        """Set requested position"""
 
-        State is announced a random number of seconds later.
-        """
-        self._target_position = position
-        await self.publish_updates()
+        raw_position = int(position * 65535 / 100)
+
+        data = {
+            "model_index": 0,
+            "event_id": 4,
+            "data": [int(raw_position / 255), int(raw_position % 255)],
+        }
+
+        await mqtt.async_publish(
+            self.hass,
+            f"{self.twist_local.network_id}/send/{self._id}/model/activate_event",
+            json.dumps(data),
+            0,
+            False,
+        )
+
+    async def stop_motor(self):
+        """Stop motor."""
+        data = {
+            "model_index": 0,
+            "event_id": 2,
+            "data": [],
+        }
+
+        await mqtt.async_publish(
+            self.hass,
+            f"{self.twist_local.network_id}/send/{self._id}/model/activate_event",
+            json.dumps(data),
+            0,
+            False,
+        )
 
     @property
     def online(self) -> float:
@@ -161,7 +215,6 @@ class TbShutter:
     # notified of any state changeds for the relevant device.
     async def publish_updates(self) -> None:
         """Schedule call all registered callbacks."""
-        self._current_position = self._target_position
         for callback in self._callbacks:
             callback()
 
