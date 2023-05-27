@@ -166,10 +166,13 @@ class TbShutter:
 
         raw_position = int(position * 65535 / 100)
 
+        uppper = raw_position / 256
+        lower = raw_position % 256
+
         data = {
             "model_index": 0,
             "event_id": 4,
-            "data": [int(raw_position / 255), int(raw_position % 255)],
+            "data": [int(raw_position / 256), int(raw_position % 256)],
         }
 
         await mqtt.async_publish(
@@ -184,7 +187,7 @@ class TbShutter:
         """Stop motor."""
         data = {
             "model_index": 0,
-            "event_id": 2,
+            "event_id": 1,
             "data": [],
         }
 
