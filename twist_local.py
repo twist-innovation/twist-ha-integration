@@ -249,7 +249,7 @@ class TbShutter(TwistDevice):
             "data": [int(raw_position / 256), int(raw_position % 256)],
         }
 
-        self.activate_event(data)
+        await self.activate_event(data)
 
     async def stop_motor(self):
         """Stop motor."""
@@ -259,7 +259,7 @@ class TbShutter(TwistDevice):
             "data": [],
         }
 
-        self.activate_event(data)
+        await self.activate_event(data)
 
 
 class CannotConnect(HomeAssistantError):
