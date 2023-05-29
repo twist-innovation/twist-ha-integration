@@ -42,7 +42,8 @@ async def async_setup_entry(
     # await tw_l.scan_for_devices(new_device)
 
     async_add_entities(
-        TwistShutter(tbshutter, config_entry.entry_id) for tbshutter in tw_l.shutters
+        TwistShutter(tbshutter, config_entry.entry_id)
+        for tbshutter in tw_l.get_devices(TbShutter)
     )
 
 
@@ -53,12 +54,7 @@ class TwistShutter(CoverEntity):
     """Representation of a dummy Cover."""
 
     _attr_has_entity_name = True
-    # Our dummy class is PUSH, so we tell HA that it should not be polled
     should_poll = False
-    # The supported features of a cover are done using a bitmask. Using the constants
-    # imported above, we can tell HA the features that are supported by this entity.
-    # If the supported features were dynamic (ie: different depending on the external
-    # device it connected to), then this should be function with an @property decorator.
     supported_features = (
         CoverEntityFeature.OPEN
         | CoverEntityFeature.CLOSE
@@ -78,12 +74,12 @@ class TwistShutter(CoverEntity):
         # which is done here by appending "_cover". For more information, see:
         # https://developers.home-assistant.io/docs/entity_registry_index/#unique-id-requirements
         # Note: This is NOT used to generate the user visible Entity ID used in automations.
-        self._attr_unique_id = f"{self._shutter.shutter_id}_cover"
+        self._attr_unique_id = f"{self._shutter.twist_id}_{self._shutter.model_index}"
 
         # This is the name for this *entity*, the "name" attribute from "device_info"
         # is used as the device name for device screens in the UI. This name is used on
         # entity screens, and used to build the Entity ID that's used is automations etc.
-        self._attr_name = f"{self._shutter.name}"
+        self._attr_name = f"- {self._shutter.model_index}"
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
@@ -94,13 +90,11 @@ class TwistShutter(CoverEntity):
         # The call back registration is done once this entity is registered with HA
         # (rather than in the __init__)
         self._shutter.register_callback(self.async_write_ha_state)
-        await self._shutter.start_listening()
 
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
         # The opposite of async_added_to_hass. Remove any registered call backs here.
         self._shutter.remove_callback(self.async_write_ha_state)
-        self._shutter.stop_listening()
 
     # Information about the devices that is partially visible in the UI.
     # The most critical thing here is to give this entity a name so it is displayed
@@ -125,9 +119,9 @@ class TwistShutter(CoverEntity):
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
         return {
-            "identifiers": {(DOMAIN, self._shutter.shutter_id)},
+            "identifiers": {(DOMAIN, self._shutter.twist_id)},
             # If desired, the name for the device could be different to the entity
-            "name": self.name,
+            "name": self._shutter.twist_id,
             "sw_version": self._shutter.firmware_version,
             "model": self._shutter.model,
             "manufacturer": self._shutter.twist_local.manufacturer,
