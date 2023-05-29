@@ -139,6 +139,7 @@ class TwistLocal:
             timeout_cnt += 1
 
     def add_models_to_lists(self, device_id: int, variant_message):
+        # TODO: this should use the variant_message and variant enum to creat the devices/models
         """Add models to lists according to variant."""
         if device_id == 1946250605:  # PCA10040
             pass
@@ -149,9 +150,9 @@ class TwistLocal:
         elif device_id == 1147007262 or device_id == 1410948014:  # tb_shutters
             self.devices.append(TbShutter(device_id, 0, self, self.hass))
 
-    def get_devices(self, classType) -> list:
+    def get_devices(self, class_type) -> list:
         """Get devices of a specific type."""
-        return [x for x in self.devices if isinstance(x, classType)]
+        return [x for x in self.devices if isinstance(x, class_type)]
 
 
 class TwistDevice:
@@ -172,14 +173,17 @@ class TwistDevice:
         self.hass = hass
         self.model_index = model_index
 
+    def received_event(self, context) -> None:
+        """placeholder function that needs to be overridden."""
+        pass
+
     async def handle_message(self, topic, payload) -> None:
         """Handle new MQTT messages."""
-
         if "model/context" in topic:
             context = json.loads(payload)
 
-            if context["model_index"] == 0:
-                self._current_position = context["context"][0]["value"] / 65535 * 100
+            if context["model_index"] == self.model_index:
+                self.received_event(context["context"])
                 await self.publish_updates()
 
     @property
@@ -191,7 +195,7 @@ class TwistDevice:
         """Activate event."""
         await mqtt.async_publish(
             self.hass,
-            f"{self.twist_local.network_id}/send/{self._id}/model/activate_event",
+            f"{self.twist_local.network_id}/send/{self.device_id}/model/activate_event",
             json.dumps(json_data),
             0,
             False,
@@ -200,8 +204,7 @@ class TwistDevice:
     @property
     def online(self) -> float:
         """Model is online."""
-        # The dummy roller is offline about 10% of the time. Returns True if online,
-        # False if offline.
+        # TODO: create an online mechanism
         return True
 
     def register_callback(self, callback: Callable[[], None]) -> None:
@@ -212,8 +215,6 @@ class TwistDevice:
         """Remove previously registered callback."""
         self._callbacks.discard(callback)
 
-    # In a real implementation, this library would call it's call backs when it was
-    # notified of any state changeds for the relevant device.
     async def publish_updates(self) -> None:
         """Schedule call all registered callbacks."""
         for callback in self._callbacks:
@@ -228,6 +229,9 @@ class TbShutter(TwistDevice):
     ) -> None:
         super().__init__(device_id, model_index, twist_local, hass)
         self.model = "tb_shutter"
+
+    def received_event(self, context) -> None:
+        self._current_position = context[0]["value"] / 65535 * 100
 
     @property
     def position(self):

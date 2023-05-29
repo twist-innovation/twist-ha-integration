@@ -1,37 +1,14 @@
 """The Twist Local integration."""
 from __future__ import annotations
 
-import logging
-
-from homeassistant.components import mqtt
-
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant, callback
-
-from homeassistant.components.cover import PLATFORM_SCHEMA, CoverEntity
-from homeassistant.const import (
-    ATTR_DEVICE_ID,
-    ATTR_ID,
-    CONF_DEVICE_ID,
-    CONF_NAME,
-    CONF_TIMEOUT,
-    CONF_UNIQUE_ID,
-    STATE_CLOSED,
-    STATE_OPEN,
-)
-
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
 
 from . import twist_local
 
-_LOGGER = logging.getLogger(__name__)
-
-# TOD List the platforms that you want to support.
-# For your initial PR, limit it to 1 platform.
 PLATFORMS: list[Platform] = [Platform.COVER]
 
 
