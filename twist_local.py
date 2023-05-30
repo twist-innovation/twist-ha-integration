@@ -108,15 +108,17 @@ class TwistLocal:
             @callback
             async def message_received(msg):
                 """Handle new MQTT messages."""
-
-                tp_split = msg.topic.split("/")
-                device_id = int(tp_split[2])
-                existing_device = [x for x in self.devices if x.device_id == device_id]
-                if len(existing_device) > 0:
-                    for device in existing_device:
-                        await device.handle_message(msg.topic, msg.payload)
-                elif "pong" in msg.topic:
-                    self.add_models_to_lists(device_id, msg.payload)
+                if not "gateway" in msg.topic:
+                    tp_split = msg.topic.split("/")
+                    device_id = int(tp_split[2])
+                    existing_device = [
+                        x for x in self.devices if x.device_id == device_id
+                    ]
+                    if len(existing_device) > 0:
+                        for device in existing_device:
+                            await device.handle_message(msg.topic, msg.payload)
+                    elif "pong" in msg.topic:
+                        self.add_models_to_lists(device_id, msg.payload)
 
             await mqtt.async_subscribe(
                 self.hass,
@@ -147,8 +149,11 @@ class TwistLocal:
             pass
         elif device_id == 1699111556:  # repeater
             pass
+        elif device_id == 1222386126:  # LED 12
+            for i in range(0, 12):
+                self.devices.append(TwistRelay(device_id, i, self, self.hass))
         elif device_id == 1147007262 or device_id == 1410948014:  # tb_shutters
-            self.devices.append(TbShutter(device_id, 0, self, self.hass))
+            self.devices.append(TwistTbShutter(device_id, 0, self, self.hass))
 
     def get_devices(self, class_type) -> list:
         """Get devices of a specific type."""
@@ -163,7 +168,6 @@ class TwistDevice:
     ) -> None:
         self._callbacks = set()
         self._loop = asyncio.get_event_loop()
-        self._current_position = 0
         self.moving = 0
         self.firmware_version = "1.3.0.1"
         self.unsubscribe = None
@@ -221,7 +225,7 @@ class TwistDevice:
             callback()
 
 
-class TbShutter(TwistDevice):
+class TwistTbShutter(TwistDevice):
     """TB shutter model."""
 
     def __init__(
@@ -229,6 +233,7 @@ class TbShutter(TwistDevice):
     ) -> None:
         super().__init__(device_id, model_index, twist_local, hass)
         self.model = "tb_shutter"
+        self._current_position = 0
 
     def received_event(self, context) -> None:
         self._current_position = context[0]["value"] / 65535 * 100
@@ -244,8 +249,8 @@ class TbShutter(TwistDevice):
         raw_position = int(position * 65535 / 100)
 
         data = {
-            "model_index": 0,
-            "event_id": 4,
+            "model_index": self.model_index,
+            "event_id": 4,  # Set value
             "data": [int(raw_position / 256), int(raw_position % 256)],
         }
 
@@ -254,12 +259,92 @@ class TbShutter(TwistDevice):
     async def stop_motor(self):
         """Stop motor."""
         data = {
-            "model_index": 0,
-            "event_id": 1,
+            "model_index": self.model_index,
+            "event_id": 1,  # Stop motor
             "data": [],
         }
 
         await self.activate_event(data)
+
+
+class TwistMonoLight(TwistDevice):
+    """Twist Light model."""
+
+    def __init__(
+        self, device_id: str, model_index: int, twist_local: TwistLocal, hass
+    ) -> None:
+        super().__init__(device_id, model_index, twist_local, hass)
+        self.model = "light"
+        self._current_intensity = 0
+
+    def received_event(self, context) -> None:
+        self._current_intensity = context[0]["value"] / 65535 * 100
+
+    @property
+    def intensity(self):
+        """Return intensity for light."""
+        return self._current_intensity
+
+    async def set_intensity(self, intensity: int) -> None:
+        """Set requested intensity."""
+
+        raw_intensity = int(intensity * 65535 / 100)
+
+        data = {
+            "model_index": self.model_index,
+            "event_id": 2,  # Set value
+            "data": [int(raw_intensity / 256), int(raw_intensity % 256)],
+        }
+
+        await self.activate_event(data)
+
+
+class TwistRelay(TwistDevice):
+    """Twist Relay model."""
+
+    def __init__(
+        self, device_id: str, model_index: int, twist_local: TwistLocal, hass
+    ) -> None:
+        super().__init__(device_id, model_index, twist_local, hass)
+        self.model = "Relay"
+        self._current_state = 0
+
+    def received_event(self, context) -> None:
+        self._current_state = context[0]["value"] == 1
+
+    @property
+    def state(self):
+        """Return state of the Relay."""
+        return self._current_state
+
+    async def set(self) -> None:
+        """Set requested state"""
+
+        data = {
+            "model_index": self.model_index,
+            "event_id": 0,  # Set
+            "data": [],
+        }
+
+        await self.activate_event(data)
+
+    async def clear(self) -> None:
+        """Clear requested state"""
+
+        data = {
+            "model_index": self.model_index,
+            "event_id": 1,  # Clear
+            "data": [],
+        }
+
+        await self.activate_event(data)
+
+    async def toggle(self) -> None:
+        """Toggle requested state"""
+        if self._current_state == 0:
+            await self.set()
+        else:
+            await self.clear()
 
 
 class CannotConnect(HomeAssistantError):

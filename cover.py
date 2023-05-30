@@ -16,7 +16,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 
-from .twist_local import TwistLocal, TbShutter
+from .twist_local import TwistLocal, TwistTbShutter
 
 
 async def async_setup_entry(
@@ -30,7 +30,7 @@ async def async_setup_entry(
 
     async_add_entities(
         TwistShutter(tbshutter, config_entry.entry_id)
-        for tbshutter in tw_l.get_devices(TbShutter)
+        for tbshutter in tw_l.get_devices(TwistTbShutter)
     )
 
 
@@ -46,7 +46,7 @@ class TwistShutter(CoverEntity):
         | CoverEntityFeature.SET_POSITION
     )
 
-    def __init__(self, shutter: TbShutter, entry_id: str) -> None:
+    def __init__(self, shutter: TwistTbShutter, entry_id: str) -> None:
         """Initialize the sensor."""
         self._shutter = shutter
         self._entry_id = entry_id
@@ -61,7 +61,7 @@ class TwistShutter(CoverEntity):
         # This is the name for this *entity*, the "name" attribute from "device_info"
         # is used as the device name for device screens in the UI. This name is used on
         # entity screens, and used to build the Entity ID that's used is automations etc.
-        self._attr_name = f"- {self._shutter.model_index}"
+        self._attr_name = f"cover {self._shutter.model_index}"
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
@@ -76,7 +76,7 @@ class TwistShutter(CoverEntity):
         """Information about this entity/device."""
         return {
             "identifiers": {(DOMAIN, self._shutter.twist_id)},
-            "name": self._shutter.twist_id,
+            "name": f"{self._shutter.twist_id}",
             "sw_version": self._shutter.firmware_version,
             "model": self._shutter.model,
             "manufacturer": self._shutter.twist_local.manufacturer,
