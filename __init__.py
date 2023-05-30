@@ -23,6 +23,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
+    async def handle_parameter(call):
+        """Handle the service call."""
+        device_id = call.data.get("device_id", None)
+        parameter_index = call.data.get("parameter_index", None)
+        value = call.data.get("value", None)
+        model_index = call.data.get("model_index", None)
+
+        if (
+            device_id is not None
+            and parameter_index is not None
+            and value is not None
+            and model_index is not None
+        ):
+            devs = [
+                x
+                for x in tw_l.devices
+                if (x.twist_id == device_id and x.model_index == model_index)
+            ]
+
+            for dev in devs:
+                await dev.set_parameter(parameter_index, value)
+
+    hass.services.async_register(DOMAIN, "set_parameter", handle_parameter)
+
     return True
 
 

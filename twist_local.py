@@ -224,6 +224,22 @@ class TwistDevice:
         for callback in self._callbacks:
             callback()
 
+    async def set_parameter(self, parameter_index: int, value: int) -> None:
+        """set parameter."""
+
+        data = {
+            "model_index": self.model_index,
+            "parameters": [{"index": parameter_index, "value": value}],
+        }
+        json_data = json.dumps(data)
+        await mqtt.async_publish(
+            self.hass,
+            f"{self.twist_local.network_id}/send/{self.device_id}/config/parameters/set",
+            json.dumps(json_data),
+            0,
+            False,
+        )
+
 
 class TwistTbShutter(TwistDevice):
     """TB shutter model."""
