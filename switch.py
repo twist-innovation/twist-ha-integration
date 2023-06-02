@@ -20,13 +20,13 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Add cover for passed config_entry in HA."""
+    """Add switch for passed config_entry in HA."""
 
     tw_l: TwistLocal = hass.data[DOMAIN]
 
     async_add_entities(
-        TwistSwitch(tbshutter, config_entry.entry_id)
-        for tbshutter in tw_l.get_devices(TwistRelay)
+        TwistSwitch(switch, config_entry.entry_id)
+        for switch in tw_l.get_devices(TwistRelay)
     )
 
 

@@ -4,7 +4,6 @@ import enum
 
 from homeassistant.core import callback
 from homeassistant.components import mqtt
-
 from homeassistant.exceptions import HomeAssistantError
 
 from collections.abc import (
@@ -154,7 +153,7 @@ class TwistLocal:
                 self.devices.append(TwistRelay(device_id, i, self, self.hass))
         elif json_data["variant_id"] == TwistVariants.BUTTON_12.value:
             for i in range(0, 12):
-                self.devices.append(TwistButton(device_id, i, self, self.hass, None))
+                self.devices.append(TwistButton(device_id, i, self, self.hass))
         elif json_data["variant_id"] == TwistVariants.TBSHUTTER_6.value:
             for i in range(0, 6):
                 self.devices.append(TwistTbShutter(device_id, i, self, self.hass))
@@ -365,6 +364,34 @@ class TwistRelay(TwistDevice):
             await self.set()
         else:
             await self.clear()
+
+
+class TwistButton(TwistDevice):
+    """Twist Relay model."""
+
+    def __init__(
+        self, device_id: str, model_index: int, twist_local: TwistLocal, hass
+    ) -> None:
+        super().__init__(device_id, model_index, twist_local, hass)
+        self.model = "Button"
+        self._current_state = "Released"
+
+    def received_event(self, context) -> None:
+        self._current_state = ButtonState(context[0]["value"]).name
+
+    @property
+    def state(self):
+        """Return state of the Button."""
+        return self._current_state
+
+
+class ButtonState(enum.Enum):
+    """Button states."""
+
+    Pushed = 0
+    Released = 1
+    LongPushed = 2
+    LongReleased = 3
 
 
 class CannotConnect(HomeAssistantError):

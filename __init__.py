@@ -9,7 +9,8 @@ from .const import DOMAIN
 
 from . import twist_local
 
-PLATFORMS: list[Platform] = [Platform.COVER, Platform.SWITCH]
+
+PLATFORMS: list[Platform] = [Platform.COVER, Platform.SWITCH, Platform.BUTTON]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -46,6 +47,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 await dev.set_parameter(parameter_index, value)
 
     hass.services.async_register(DOMAIN, "set_parameter", handle_parameter)
+
+    # await async_button_entry(hass, entry)
 
     return True
 
