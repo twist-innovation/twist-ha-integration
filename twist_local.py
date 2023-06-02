@@ -117,7 +117,7 @@ class TwistLocal:
                     if len(existing_device) > 0:
                         for device in existing_device:
                             await device.handle_message(msg.topic, msg.payload)
-                    elif "pong" in msg.topic:
+                    elif "variant" in msg.topic:
                         self.add_models_to_lists(device_id, msg.payload)
 
             await mqtt.async_subscribe(
@@ -131,7 +131,7 @@ class TwistLocal:
         while timeout_cnt < 2:
             await mqtt.async_publish(
                 self.hass,
-                f"{self.network_id}/send/gateway/4294967295/ping",
+                f"{self.network_id}/send/gateway/4294967295/device/variant/get",
                 "ping",
                 0,
                 False,
@@ -141,19 +141,23 @@ class TwistLocal:
             timeout_cnt += 1
 
     def add_models_to_lists(self, device_id: int, variant_message):
-        # TODO: this should use the variant_message and variant enum to creat the devices/models
         """Add models to lists according to variant."""
-        if device_id == 1946250605:  # PCA10040
-            pass
-        elif device_id == 178720236:  # Sensor platform
-            pass
-        elif device_id == 1699111556:  # repeater
-            pass
-        elif device_id == 1222386126:  # LED 12
+        json_data = json.loads(variant_message)
+
+        if json_data["variant_id"] == TwistVariants.MONO_LIGHT_32.value:
+            for i in range(0, 32):
+                self.devices.append(TwistMonoLight(device_id, i, self, self.hass))
+        elif json_data["variant_id"] == TwistVariants.TBSHUTTER_1.value:
+            self.devices.append(TwistTbShutter(device_id, 0, self, self.hass))
+        elif json_data["variant_id"] == TwistVariants.LED_12.value:
             for i in range(0, 12):
                 self.devices.append(TwistRelay(device_id, i, self, self.hass))
-        elif device_id == 1147007262 or device_id == 1410948014:  # tb_shutters
-            self.devices.append(TwistTbShutter(device_id, 0, self, self.hass))
+        elif json_data["variant_id"] == TwistVariants.BUTTON_12.value:
+            for i in range(0, 12):
+                self.devices.append(TwistButton(device_id, i, self, self.hass, None))
+        elif json_data["variant_id"] == TwistVariants.TBSHUTTER_6.value:
+            for i in range(0, 6):
+                self.devices.append(TwistTbShutter(device_id, i, self, self.hass))
 
     def get_devices(self, class_type) -> list:
         """Get devices of a specific type."""
