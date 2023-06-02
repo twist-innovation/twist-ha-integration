@@ -39,10 +39,8 @@ class HomeassistantButton:
             config_entry_id=entry_id,
             identifiers={(DOMAIN, self._button.twist_id)},
             manufacturer=self._button.twist_local.manufacturer,
-            name=self._button.model,
+            name=f"{self._button.twist_id}",
             model=self._button.model,
-            # sw_version=config.swversion,
-            # hw_version=config.hwversion,
         )
 
         self._button.register_callback(self.fire_event)
