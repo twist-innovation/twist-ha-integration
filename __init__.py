@@ -10,7 +10,12 @@ from .const import DOMAIN
 from . import twist_local
 
 
-PLATFORMS: list[Platform] = [Platform.COVER, Platform.SWITCH, Platform.BUTTON]
+PLATFORMS: list[Platform] = [
+    Platform.COVER,
+    Platform.SWITCH,
+    Platform.BUTTON,
+    Platform.LIGHT,
+]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

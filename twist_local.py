@@ -109,7 +109,10 @@ class TwistLocal:
                 """Handle new MQTT messages."""
                 if not "gateway" in msg.topic:
                     tp_split = msg.topic.split("/")
-                    device_id = int(tp_split[2])
+                    device_id_str = tp_split[2]
+                    if not device_id_str.isdigit():
+                        return
+                    device_id = int(device_id_str)
                     existing_device = [
                         x for x in self.devices if x.device_id == device_id
                     ]
@@ -130,7 +133,7 @@ class TwistLocal:
         while timeout_cnt < 2:
             await mqtt.async_publish(
                 self.hass,
-                f"{self.network_id}/send/gateway/4294967295/device/variant/get",
+                f"{self.network_id}/send/4294967295/device/variant/get",
                 "ping",
                 0,
                 False,
@@ -312,7 +315,34 @@ class TwistMonoLight(TwistDevice):
         data = {
             "model_index": self.model_index,
             "event_id": 2,  # Set value
-            "data": [int(raw_intensity / 256), int(raw_intensity % 256)],
+            "data": [int(raw_intensity % 256), int(raw_intensity / 256)],
+        }
+
+        await self.activate_event(data)
+
+    async def set_intensity_with_fade_time(
+        self, intensity: int, fade_time: float
+    ) -> None:
+        """Set requested intensity."""
+
+        raw_intensity = int(intensity * 65535 / 100)
+
+        fade_time0 = int(fade_time) % 256
+        fade_time1 = (int(fade_time) / 256) % 256
+        fade_time2 = (int(fade_time) / 256 / 256) % 256
+        fade_time3 = (int(fade_time) / 256 / 256 / 256) % 256
+
+        data = {
+            "model_index": self.model_index,
+            "event_id": 4,  # Set value
+            "data": [
+                int(raw_intensity % 256),
+                int(raw_intensity / 256),
+                int(fade_time0),
+                int(fade_time1),
+                int(fade_time2),
+                int(fade_time3),
+            ],
         }
 
         await self.activate_event(data)
@@ -325,7 +355,7 @@ class TwistRelay(TwistDevice):
         self, device_id: str, model_index: int, twist_local: TwistLocal, hass
     ) -> None:
         super().__init__(device_id, model_index, twist_local, hass)
-        self.model = "Relay"
+        self.model = "relay"
         self._current_state = 0
 
     def received_event(self, context) -> None:
@@ -373,7 +403,7 @@ class TwistButton(TwistDevice):
         self, device_id: str, model_index: int, twist_local: TwistLocal, hass
     ) -> None:
         super().__init__(device_id, model_index, twist_local, hass)
-        self.model = "Button"
+        self.model = "button"
         self._current_state = "Released"
 
     def received_event(self, context) -> None:
