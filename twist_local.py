@@ -160,6 +160,9 @@ class TwistLocal:
         elif json_data["variant_id"] == TwistVariants.TBSHUTTER_6.value:
             for i in range(0, 6):
                 self.devices.append(TwistTbShutter(device_id, i, self, self.hass))
+        elif json_data["variant_id"] == TwistVariants.BUTTON_4.value:
+            for i in range(0, 4):
+                self.devices.append(TwistButton(device_id, i, self, self.hass))
 
     def get_devices(self, class_type) -> list:
         """Get devices of a specific type."""
