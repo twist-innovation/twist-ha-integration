@@ -22,13 +22,13 @@ class TwistVariants(enum.Enum):
     MONO_LIGHT_2 = 0x0004
     TEMP_HUM_PIR_LUX_VOC = 0x0005
     MONO_LIGHT_1_BUTTON_1 = 0x0006
-    SHUTTER_2_BATTERY_1 = 0x0007
+    RGB_1_TUNABLE_WHITE_1 = 0x0007
     BUTTON_8_LED_4 = 0x0008
     MONO_LIGHT_2_LUX2BRIGHTNESS_1 = 0x0009
-    SHUTTER_1_BATTERY_1 = 0x000A
-    SHUTTER_1 = 0x000B
+    RGB_1_MONO_LIGHT_2 = 0x000A
+    LUX_1_UV_1_TEMP_1_HUM_1_WINDSPEED_1_GUSTSPEED_1_WINDDIR_1_RAINFALL_1_PRES_1 = 0x000B
     RGBW_1 = 0x000C
-    SHUTTER_1_TEMP_1 = 0x000D
+    BUTTON_6_LUX_6 = 0x000D
     BUTTON_4 = 0x000E
     TUNABLE_WHITE_2 = 0x000F
     WIND_1_LUX_1_RAIN_1 = 0x0010
@@ -163,6 +163,70 @@ class TwistLocal:
         elif json_data["variant_id"] == TwistVariants.BUTTON_4.value:
             for i in range(0, 4):
                 self.devices.append(TwistButton(device_id, i, self, self.hass))
+        elif (
+            json_data["variant_id"]
+            == TwistVariants.LUX_1_UV_1_TEMP_1_HUM_1_WINDSPEED_1_GUSTSPEED_1_WINDDIR_1_RAINFALL_1_PRES_1.value
+        ):
+            self.devices.append(
+                TwistGeneralSensor(device_id, 0, 1, 0, "Light", "lux", self, self.hass)
+            )
+            self.devices.append(
+                TwistGeneralSensor(device_id, 1, 1, 0, "Uv", "index", self, self.hass)
+            )
+            self.devices.append(
+                TwistGeneralSensor(
+                    device_id,
+                    2,
+                    0.003906304,
+                    -128,
+                    "Temperature",
+                    "°C",
+                    self,
+                    self.hass,
+                )
+            )
+            self.devices.append(
+                TwistGeneralSensor(
+                    device_id, 3, 0.001525902, 0, "Humidity", "%", self, self.hass
+                )
+            )
+            self.devices.append(
+                TwistGeneralSensor(
+                    device_id, 4, 0.1, 0, "Wind Speed", "m/s", self, self.hass
+                )
+            )
+            self.devices.append(
+                TwistGeneralSensor(
+                    device_id, 5, 0.1, 0, "Gust Speed", "m/s", self, self.hass
+                )
+            )
+            self.devices.append(
+                TwistGeneralSensor(
+                    device_id, 6, 0.005493248, 0, "Wind Direction", "°", self, self.hass
+                )
+            )
+            self.devices.append(
+                TwistGeneralSensor(device_id, 7, 0.1, 0, "Rain", "mm", self, self.hass)
+            )
+            self.devices.append(
+                TwistGeneralSensor(
+                    device_id, 8, 0.02288853, 0, "Pressure", "hPa", self, self.hass
+                )
+            )
+        elif json_data["variant_id"] == TwistVariants.WIND_1_LUX_1_RAIN_1.value:
+            self.devices.append(
+                TwistGeneralSensor(
+                    device_id, 0, 0.1, 0, "Wind Speed", "m/s", self, self.hass
+                )
+            )
+
+            self.devices.append(
+                TwistGeneralSensor(device_id, 1, 1, 0, "Light", "lux", self, self.hass)
+            )
+
+            self.devices.append(
+                TwistGeneralSensor(device_id, 2, 1, 0, "Rain", "", self, self.hass)
+            )
 
     def get_devices(self, class_type) -> list:
         """Get devices of a specific type."""
@@ -416,6 +480,39 @@ class TwistButton(TwistDevice):
     def state(self):
         """Return state of the Button."""
         return self._current_state
+
+
+class TwistGeneralSensor(TwistDevice):
+    """Twist Sensor light."""
+
+    def __init__(
+        self,
+        device_id: str,
+        model_index: int,
+        factor: float,
+        offset: float,
+        name: str,
+        unit: str,
+        twist_local: TwistLocal,
+        hass,
+    ) -> None:
+        super().__init__(device_id, model_index, twist_local, hass)
+        self.model = "sensor"
+        self._current_value = 0
+        self.factor = factor
+        self.offset = offset
+        self.name = name
+        self.unit = unit
+
+    def received_event(self, context) -> None:
+        self._current_value = round(
+            (context[0]["value"] * self.factor) + self.offset, 2
+        )
+
+    @property
+    def value(self):
+        """Return value of the sensor."""
+        return self._current_value
 
 
 class ButtonState(enum.Enum):
