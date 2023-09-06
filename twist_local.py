@@ -50,8 +50,8 @@ class TwistLocal:
         self.gateway_id = gateway_id
         self.network_id = gateway_id
         self.hass = hass
-        self.wait_for_answer = False
-        self.valid = False
+        self.wait_for_answer = True
+        self.valid = True
         self.connected = False
 
         self.manufacturer = "Ledsgo"
@@ -139,7 +139,7 @@ class TwistLocal:
                 False,
             )
 
-            await asyncio.sleep(1)
+            await asyncio.sleep(10)
             timeout_cnt += 1
 
     def add_models_to_lists(self, device_id: int, variant_message):
