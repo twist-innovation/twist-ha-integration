@@ -1,7 +1,7 @@
 from homeassistant.helpers import device_registry as dr
 
 from homeassistant.helpers.entity import Entity
-from .twist_local import TwistLocal, TwistButton
+from .twist_api import Twist, TwistButton
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -18,7 +18,7 @@ async def async_setup_entry(
 ) -> None:
     """Add switch for passed config_entry in HA."""
 
-    tw_l: TwistLocal = hass.data[DOMAIN]
+    tw_l: Twist = hass.data[DOMAIN]
 
     for button in tw_l.get_devices(TwistButton):
         HomeassistantButton(button, config_entry.entry_id, hass)
@@ -38,7 +38,7 @@ class HomeassistantButton:
         device_registry.async_get_or_create(
             config_entry_id=entry_id,
             identifiers={(DOMAIN, self._button.twist_id)},
-            manufacturer=self._button.twist_local.manufacturer,
+            manufacturer=self._button.twist.manufacturer,
             name=f"{self._button.twist_id}",
             model=self._button.model,
         )
@@ -51,6 +51,6 @@ class HomeassistantButton:
             "type": self._button.state,
         }
         self._hass.bus.async_fire(
-            f"twist_local.button_{self._button.twist_id}_{self._button.model_index}",
+            f"twist.button_{self._button.twist_id}_{self._button.model_index}",
             event_data,
         )

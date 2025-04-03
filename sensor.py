@@ -1,4 +1,5 @@
 """Platform for sensor integration."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -12,7 +13,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 
-from .twist_local import TwistLocal, TwistGeneralSensor
+from .twist_api import Twist, TwistGeneralSensor
 
 
 async def async_setup_entry(
@@ -22,7 +23,7 @@ async def async_setup_entry(
 ) -> None:
     """Add sensor for passed config_entry in HA."""
 
-    tw_l: TwistLocal = hass.data[DOMAIN]
+    tw_l: Twist = hass.data[DOMAIN]
 
     async_add_entities(
         TwistSensor(sensor, config_entry.entry_id)
@@ -69,13 +70,13 @@ class TwistSensor(SensorEntity):
             "name": f"{self._sensor.twist_id}",
             "sw_version": self._sensor.firmware_version,
             "model": self._sensor.model,
-            "manufacturer": self._sensor.twist_local.manufacturer,
+            "manufacturer": self._sensor.twist.manufacturer,
         }
 
     @property
     def available(self) -> bool:
-        """Return True if Roller and twist_local is available."""
-        return self._sensor.online and self._sensor.twist_local.connected
+        """Return True if Roller and twist is available."""
+        return self._sensor.online and self._sensor.twist.connected
 
     @property
     def native_value(self):

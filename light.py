@@ -1,4 +1,5 @@
 """Platform for sensor integration."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -18,7 +19,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 
-from .twist_local import TwistLocal, TwistMonoLight
+from .twist_api import Twist, TwistMonoLight
 
 
 async def async_setup_entry(
@@ -28,7 +29,7 @@ async def async_setup_entry(
 ) -> None:
     """Add switch for passed config_entry in HA."""
 
-    tw_l: TwistLocal = hass.data[DOMAIN]
+    tw_l: Twist = hass.data[DOMAIN]
 
     async_add_entities(
         TwistLight(light, config_entry.entry_id)
@@ -76,8 +77,8 @@ class TwistLight(LightEntity):
             "identifiers": {(DOMAIN, self._light.twist_id)},
             "name": f"{self._light.twist_id}",
             "sw_version": self._light.firmware_version,
-            "model": self._light.model,
-            "manufacturer": self._light.twist_local.manufacturer,
+            "model": self._light.model_name,
+            "manufacturer": self._light.twist.manufacturer,
         }
 
     @property
@@ -87,8 +88,8 @@ class TwistLight(LightEntity):
 
     @property
     def available(self) -> bool:
-        """Return True if Roller and twist_local is available."""
-        return self._light.online and self._light.twist_local.connected
+        """Return True if Roller and twist is available."""
+        return self._light.online and self._light.twist.connected
 
     @property
     def is_on(self) -> bool:
@@ -99,6 +100,14 @@ class TwistLight(LightEntity):
     def brightness(self) -> int:
         """Return the brightness of this light between 0..255."""
         return round(self._light.intensity * 255 / 100)
+
+    @property
+    def supported_color_modes(self):
+        return {ColorMode.BRIGHTNESS}
+
+    @property
+    def color_mode(self):
+        return ColorMode.BRIGHTNESS
 
     async def async_turn_on(self, **kwargs):
         """Turn the entity on."""

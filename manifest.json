@@ -1,6 +1,6 @@
 {
-  "domain": "twist_local",
-  "name": "Twist Local",
+  "domain": "twist",
+  "name": "Twist",
   "codeowners": [
     "@sgoudsme"
   ],
@@ -9,7 +9,9 @@
   "documentation": "https://www.home-assistant.io/integrations/twist_local",
   "homekit": {},
   "iot_class": "local_push",
-  "requirements": [],
+  "requirements": [
+    "twist-innovation-api==0.0.2"
+  ],
   "ssdp": [],
   "version": "0.0.1",
   "zeroconf": []

@@ -1,4 +1,5 @@
 """Platform for sensor integration."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -16,7 +17,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 
-from .twist_local import TwistLocal, TwistTbShutter
+from .twist_api import Twist, TwistTbShutter
 
 
 async def async_setup_entry(
@@ -26,7 +27,7 @@ async def async_setup_entry(
 ) -> None:
     """Add cover for passed config_entry in HA."""
 
-    tw_l: TwistLocal = hass.data[DOMAIN]
+    tw_l: Twist = hass.data[DOMAIN]
 
     async_add_entities(
         TwistShutter(tbshutter, config_entry.entry_id)
@@ -79,13 +80,13 @@ class TwistShutter(CoverEntity):
             "name": f"{self._shutter.twist_id}",
             "sw_version": self._shutter.firmware_version,
             "model": self._shutter.model,
-            "manufacturer": self._shutter.twist_local.manufacturer,
+            "manufacturer": self._shutter.twist.manufacturer,
         }
 
     @property
     def available(self) -> bool:
-        """Return True if Roller and twist_local is available."""
-        return self._shutter.online and self._shutter.twist_local.connected
+        """Return True if Roller and twist is available."""
+        return self._shutter.online and self._shutter.twist.connected
 
     @property
     def current_cover_position(self):

@@ -1,4 +1,5 @@
 """Platform for sensor integration."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -12,7 +13,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 
-from .twist_local import TwistLocal, TwistRelay
+from .twist_api import Twist, TwistRelay
 
 
 async def async_setup_entry(
@@ -22,7 +23,7 @@ async def async_setup_entry(
 ) -> None:
     """Add switch for passed config_entry in HA."""
 
-    tw_l: TwistLocal = hass.data[DOMAIN]
+    tw_l: Twist = hass.data[DOMAIN]
 
     async_add_entities(
         TwistSwitch(switch, config_entry.entry_id)
@@ -69,13 +70,13 @@ class TwistSwitch(SwitchEntity):
             "name": f"{self._switch.twist_id}",
             "sw_version": self._switch.firmware_version,
             "model": self._switch.model,
-            "manufacturer": self._switch.twist_local.manufacturer,
+            "manufacturer": self._switch.twist.manufacturer,
         }
 
     @property
     def available(self) -> bool:
-        """Return True if Roller and twist_local is available."""
-        return self._switch.online and self._switch.twist_local.connected
+        """Return True if Roller and twist is available."""
+        return self._switch.online and self._switch.twist.connected
 
     @property
     def is_on(self) -> bool:

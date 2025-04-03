@@ -1,3 +1,3 @@
-"""Constants for the Twist Local integration."""
+"""Constants for the Twist integration."""
 
-DOMAIN = "twist_local"
+DOMAIN = "twist"

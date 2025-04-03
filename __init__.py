@@ -1,4 +1,5 @@
-"""The Twist Local integration."""
+"""The Twist integration."""
+
 from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
@@ -7,7 +8,7 @@ from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
 
-from . import twist_local
+from . import twist_api
 
 
 PLATFORMS: list[Platform] = [
@@ -20,10 +21,11 @@ PLATFORMS: list[Platform] = [
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Twist Local from a config entry."""
+    """Set up Twist from a config entry."""
 
-    tw_l = twist_local.TwistLocal(entry.data["network"], hass)
+    tw_l = twist_api.Twist(entry.data["installation_id"], hass)
     await tw_l.check_connection()
+    await tw_l.configure()
     await tw_l.scan_for_devices()
 
     hass.data[DOMAIN] = tw_l

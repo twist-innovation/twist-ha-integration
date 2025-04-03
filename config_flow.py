@@ -1,4 +1,5 @@
-"""Config flow for Twist Local integration."""
+"""Config flow for Twist integration."""
+
 from __future__ import annotations
 
 import logging
@@ -12,14 +13,14 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 
-from .twist_local import TwistLocal
+from .twist_api import Twist
 
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-# TOD adjust the data schema to the data that you need
-STEP_USER_DATA_SCHEMA = vol.Schema({vol.Required("network"): str})
+
+STEP_USER_DATA_SCHEMA = vol.Schema({vol.Required("installation_id"): str})
 
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
@@ -27,17 +28,19 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
     Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
     """
-    twist_local = TwistLocal(data["network"], hass)
+    twist = Twist(data["installation_id"], hass)
 
-    if not await twist_local.check_connection():
+    if not await twist.check_connection():
         raise GatewayNotFound
 
+    await twist.configure()
+
     # Return info that you want to store in the config entry.
-    return {"network": "Twist Local"}
+    return {"installation_id": "Twist"}
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Twist Local."""
+    """Handle a config flow for Twist."""
 
     VERSION = 1
 
@@ -57,7 +60,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
             else:
-                existing_entry = await self.async_set_unique_id(info["network"])
+                existing_entry = await self.async_set_unique_id(info["installation_id"])
                 if existing_entry:
                     self.hass.config_entries.async_update_entry(
                         existing_entry, data=user_input
@@ -69,7 +72,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     return self.async_abort(reason="already exists")
 
                 return self.async_create_entry(
-                    title=info["network"],
+                    title=info["installation_id"],
                     data=user_input,
                 )
 
