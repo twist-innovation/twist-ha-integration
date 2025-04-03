@@ -89,17 +89,9 @@ class Twist:
         """Scan for devices."""
         self.twist_model_list = await self.twist.search_models()
 
-        for model in self.twist_model_list:
-            self.add_models_to_lists(model)
-
-    def add_models_to_lists(self, model):
-        """Add models to lists according to variant."""
-        if type(model) is TwistLight.TwistLight:
-            self.devices.append(TwistMonoLight(model, self, self.hass))
-
     def get_devices(self, class_type) -> list:
         """Get devices of a specific type."""
-        return [x for x in self.devices if isinstance(x, class_type)]
+        return [x for x in self.twist_model_list if isinstance(x, class_type)]
 
 
 class TwistDevice:
@@ -218,58 +210,6 @@ class TwistTbShutter(TwistDevice):
         }
 
         await self.activate_event(data)
-
-
-class TwistMonoLight(TwistDevice):
-    """Twist Light model."""
-
-    def __init__(self, model, twist: Twist, hass) -> None:
-        super().__init__(model, twist, hass)
-        self.model_name = "light"
-        self._current_intensity = 0
-
-    async def received_event(self) -> None:
-        self._current_intensity = self._model.actual_state
-        await self.publish_updates()
-
-    @property
-    def intensity(self):
-        """Return intensity for light."""
-        return self._current_intensity
-
-    async def set_intensity(self, intensity: int) -> None:
-        """Set requested intensity."""
-
-        raw_intensity = int(intensity * 65535 / 100)
-
-        await self._model.set_value(raw_intensity)
-
-    async def set_intensity_with_fade_time(
-        self, intensity: int, fade_time: float
-    ) -> None:
-        """Set requested intensity."""
-
-        raw_intensity = int(intensity * 65535 / 100)
-
-        # fade_time0 = int(fade_time) % 256
-        # fade_time1 = (int(fade_time) / 256) % 256
-        # fade_time2 = (int(fade_time) / 256 / 256) % 256
-        # fade_time3 = (int(fade_time) / 256 / 256 / 256) % 256
-
-        # data = {
-        #     "model_index": self.model_index,
-        #     "event_id": 4,  # Set value
-        #     "data": [
-        #         int(raw_intensity % 256),
-        #         int(raw_intensity / 256),
-        #         int(fade_time0),
-        #         int(fade_time1),
-        #         int(fade_time2),
-        #         int(fade_time3),
-        #     ],
-        # }
-
-        await self._model.set_value(raw_intensity, fade_time)
 
 
 class TwistRelay(TwistDevice):
