@@ -28,7 +28,7 @@ class Twist:
         self.devices = []
         self.twist_model_list = []
 
-        self.twist = TwistAPI(self.installation_id, self._on_model_update)
+        self.twist = TwistAPI(self.installation_id)
 
         # Create a callback function
         self.callback_f: Callable[[str, str], None] | None = None
@@ -36,8 +36,8 @@ class Twist:
     async def configure(self):
         await self.twist.add_mqtt(self._mqtt_publish, self._mqtt_subscribe)
 
-        # we need to sleep for 1s, so the async subscribe function should be configured
-        await asyncio.sleep(1)
+        # we need to sleep for 2s, so the async subscribe function should be configured
+        await asyncio.sleep(2)
 
     async def _mqtt_publish(self, topic, payload):
         await mqtt.async_publish(
@@ -56,21 +56,6 @@ class Twist:
             self._message_received,
             0,
         )
-
-    async def _on_model_update(self, model: TwistModel) -> None:
-        hass_model = next(
-            (
-                dev
-                for dev in self.devices
-                if dev.get_model().model_id == model.model_id
-                and dev.get_model().parent_device.twist_id
-                == model.parent_device.twist_id
-            ),
-            None,
-        )
-
-        if hass_model is not None:
-            await hass_model.received_event()
 
     async def _message_received(self, msg):
         if self.callback_f is not None:

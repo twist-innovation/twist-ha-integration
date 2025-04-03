@@ -71,6 +71,8 @@ class HATwistLight(LightEntity):
         self.sw_version = None
         self._added_to_hass = False
 
+        self._twist_light.register_update_cb(self.update_received)
+
         asyncio.create_task(self._set_version_async())  # set in background
 
     async def _set_version_async(self):
@@ -84,7 +86,7 @@ class HATwistLight(LightEntity):
         """Entity being removed from hass."""
         self._added_to_hass = False
 
-    async def update_received(self):
+    async def update_received(self, model):
         if self._added_to_hass:
             self.async_write_ha_state()
 
@@ -118,7 +120,7 @@ class HATwistLight(LightEntity):
     @property
     def brightness(self) -> int:
         """Return the brightness of this light between 0..255."""
-        return round(self._twist_light.actual_state / 655.35)
+        return round(self._twist_light.actual_state * 2.55)
 
     @property
     def supported_color_modes(self):
@@ -133,12 +135,12 @@ class HATwistLight(LightEntity):
         if ATTR_BRIGHTNESS in kwargs:
             if ATTR_TRANSITION in kwargs:
                 return await self._twist_light.set_value(
-                    round(kwargs[ATTR_BRIGHTNESS] * 255),
+                    round(kwargs[ATTR_BRIGHTNESS] / 2.55),
                     round(kwargs[ATTR_TRANSITION] * 1000.0),
                 )
 
             return await self._twist_light.set_value(
-                round(kwargs[ATTR_BRIGHTNESS] * 255)
+                round(kwargs[ATTR_BRIGHTNESS] / 2.55)
             )
 
         await self._twist_light.turn_on()
