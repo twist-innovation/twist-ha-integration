@@ -114,17 +114,17 @@ class HATwistShutter(CoverEntity):
     @property
     def is_closed(self) -> bool:
         """Return if the cover is closed, same as position 0."""
-        return self._twist_shutter.actual_state == self._twist_shutter.requested_state
+        return self._twist_shutter.actual_state == 0
 
     @property
     def is_closing(self) -> bool:
         """Return if the cover is closing or not."""
-        return self._twist_shutter.actual_state < self._twist_shutter.requested_state
+        return self._twist_shutter.actual_state > self._twist_shutter.requested_state
 
     @property
     def is_opening(self) -> bool:
         """Return if the cover is opening or not."""
-        return self._twist_shutter.actual_state > self._twist_shutter.requested_state
+        return self._twist_shutter.actual_state < self._twist_shutter.requested_state
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
