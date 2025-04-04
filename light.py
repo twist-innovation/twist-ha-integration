@@ -22,7 +22,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
 
 from .twist_api import Twist
-from twist import TwistLight
+from twist import TwistLight, TwistRgb
 
 from importlib.metadata import version
 
@@ -38,7 +38,7 @@ async def async_setup_entry(
 
     async_add_entities(
         HATwistLight(light, config_entry.entry_id)
-        for light in tw_l.get_devices(TwistLight.TwistLight)
+        for light in tw_l.get_devices(TwistLight.TwistLight | TwistRgb.TwistRgb)
     )
 
 
@@ -48,7 +48,9 @@ class HATwistLight(LightEntity):
     _attr_has_entity_name = True
     should_poll = False
 
-    def __init__(self, light: TwistLight.TwistLight, entry_id: str) -> None:
+    def __init__(
+        self, light: TwistLight.TwistLight | TwistRgb.TwistRgb, entry_id: str
+    ) -> None:
         """Initialize the sensor."""
         self._twist_light = light
         self._entry_id = entry_id
@@ -124,11 +126,20 @@ class HATwistLight(LightEntity):
 
     @property
     def supported_color_modes(self):
-        return {ColorMode.BRIGHTNESS}
+        if type(self._twist_light) is TwistLight.TwistLight:
+            return {ColorMode.BRIGHTNESS}
+        if type(self._twist_light) is TwistRgb.TwistRgb:
+            return {ColorMode.HS}
+        return ColorMode.UNKNOWN
 
     @property
     def color_mode(self):
-        return ColorMode.BRIGHTNESS
+        # return ColorMode.BRIGHTNESS
+        if type(self._twist_light) is TwistLight.TwistLight:
+            return ColorMode.BRIGHTNESS
+        if type(self._twist_light) is TwistRgb.TwistRgb:
+            return ColorMode.HS
+        return ColorMode.UNKNOWN
 
     async def async_turn_on(self, **kwargs):
         """Turn the entity on."""
