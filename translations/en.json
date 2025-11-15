@@ -11,9 +11,35 @@
         "step": {
             "user": {
                 "data": {
-                    "network": "Network"
+                    "api_key": "API key",
+                    "server_url": "Server URL"
                 }
             }
         }
-    }
+    },
+    "services": {
+        "set_parameter": {
+            "description": "Set a custom parameter on a Twist device.",
+            "fields": {
+                "device_id": {
+                    "description": "The Twist device ID.",
+                    "name": "Device ID"
+                },
+                "model_index": {
+                    "description": "The model index of the device.",
+                    "name": "Model index"
+                },
+                "parameter_index": {
+                    "description": "The parameter index to set.",
+                    "name": "Parameter index"
+                },
+                "value": {
+                    "description": "The value to set for the parameter.",
+                    "name": "Value"
+                }
+            },
+            "name": "Set parameter"
+        }
+    },
+    "title": "Twist"
 }

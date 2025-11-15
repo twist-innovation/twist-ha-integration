@@ -1,19 +1,45 @@
 {
+  "title": "Twist",
   "config": {
-      "abort": {
-          "already_configured": "Device is already configured"
-      },
-      "error": {
-          "cannot_connect": "Failed to connect",
-          "invalid_auth": "Invalid authentication",
-          "unknown": "Unexpected error"
-      },
-      "step": {
-          "user": {
-              "data": {
-                  "installation_id": "Installation Id"
-              }
-          }
+    "abort": {
+      "already_configured": "Device is already configured"
+    },
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_auth": "Invalid authentication",
+      "unknown": "Unexpected error"
+    },
+    "step": {
+      "user": {
+        "data": {
+          "server_url": "Server URL",
+          "api_key": "API key"
+        }
       }
+    }
+  },
+  "services": {
+    "set_parameter": {
+      "name": "Set parameter",
+      "description": "Set a custom parameter on a Twist device.",
+      "fields": {
+        "device_id": {
+          "name": "Device ID",
+          "description": "The Twist device ID."
+        },
+        "model_index": {
+          "name": "Model index",
+          "description": "The model index of the device."
+        },
+        "parameter_index": {
+          "name": "Parameter index",
+          "description": "The parameter index to set."
+        },
+        "value": {
+          "name": "Value",
+          "description": "The value to set for the parameter."
+        }
+      }
+    }
   }
 }

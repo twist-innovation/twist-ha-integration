@@ -1,170 +1,164 @@
-"""Platform for sensor integration."""
+"""Platform for light integration."""
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
-import asyncio
-
-
+from homeassistant.components import mqtt
 from homeassistant.components.light import (
-    LightEntity,
-    ColorMode,
     ATTR_BRIGHTNESS,
+    ATTR_HS_COLOR,
     ATTR_TRANSITION,
+    ColorMode,
+    LightEntity,
     LightEntityFeature,
 )
-
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from . import TwistConfigEntry
 from .const import DOMAIN
-
-from .twist_api import Twist
-from twist import TwistLight, TwistRgb
-
-from importlib.metadata import version
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: TwistConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Add switch for passed config_entry in HA."""
+    """Add light entities for passed config_entry in HA."""
+    twist = config_entry.runtime_data
 
-    tw_l: Twist = hass.data[DOMAIN]
+    # Get all light devices (Light and RGB types)
+    lights = []
+    for device in twist.devices:
+        device_type = device.get("type", "")
+        if device_type in ("Light", "RGB"):
+            lights.append(TwistLightEntity(twist, device, config_entry))
 
-    async_add_entities(
-        HATwistLight(light, config_entry.entry_id)
-        for light in tw_l.get_devices(TwistLight.TwistLight | TwistRgb.TwistRgb)
-    )
+    async_add_entities(lights)
 
 
-class HATwistLight(LightEntity):
-    """Representation of a dummy Cover."""
+class TwistLightEntity(LightEntity):
+    """Representation of a Twist light."""
 
     _attr_has_entity_name = True
-    should_poll = False
+    _attr_should_poll = False
+    _attr_supported_features = LightEntityFeature.TRANSITION
 
-    def __init__(
-        self, light: TwistLight.TwistLight | TwistRgb.TwistRgb, entry_id: str
-    ) -> None:
-        """Initialize the sensor."""
-        self._twist_light = light
-        self._entry_id = entry_id
+    def __init__(self, twist, device_config: dict[str, Any], config_entry) -> None:
+        """Initialize the light."""
+        self._twist = twist
+        self._device_config = device_config
+        self._config_entry = config_entry
 
-        # A unique_id for this entity with in this domain. This means for example if you
-        # have a sensor on this cover, you must ensure the value returned is unique,
-        # which is done here by appending "_cover". For more information, see:
-        # https://developers.home-assistant.io/docs/entity_registry_index/#unique-id-requirements
-        # Note: This is NOT used to generate the user visible Entity ID used in automations.
-        self._attr_unique_id = (
-            f"{self._twist_light.parent_device.twist_id}_{self._twist_light.model_id}"
+        self._device_id = device_config["device_id"]
+        self._model_id = device_config["model_id"]
+        self._device_name = device_config["name"]
+        self._device_type = device_config["type"]
+
+        self._brightness = 0
+        self._hs_color = (0, 0)
+
+        self._attr_unique_id = f"{self._device_id}_{self._model_id}"
+        self._attr_name = self._device_name or f"{self._device_type} {self._model_id}"
+
+        # Determine color mode based on device type
+        if self._device_type == "RGB":
+            self._attr_supported_color_modes = {ColorMode.HS}
+            self._attr_color_mode = ColorMode.HS
+        else:
+            self._attr_supported_color_modes = {ColorMode.BRIGHTNESS}
+            self._attr_color_mode = ColorMode.BRIGHTNESS
+
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, self._device_id)},
+            name=self._device_id,
+            manufacturer="Twist Innovation",
+            model=self._device_type,
         )
 
-        # This is the name for this *entity*, the "name" attribute from "device_info"
-        # is used as the device name for device screens in the UI. This name is used on
-        # entity screens, and used to build the Entity ID that's used is automations etc.
-        self._attr_name = f"light {self._twist_light.model_id}"
-
-        self.manufacturer = "Twist-Innovation"
-        self.sw_version = None
-        self._added_to_hass = False
-
-        self._twist_light.register_update_cb(self.update_received)
-
-        asyncio.create_task(self._set_version_async())  # set in background
-
-    async def _set_version_async(self):
-        self.sw_version = await asyncio.to_thread(version, "twist-innovation-api")
-
     async def async_added_to_hass(self) -> None:
-        """Run when this Entity has been added to HA."""
-        self._added_to_hass = True
+        """Subscribe to MQTT events when added to hass."""
+        await super().async_added_to_hass()
 
-    async def async_will_remove_from_hass(self) -> None:
-        """Entity being removed from hass."""
-        self._added_to_hass = False
+        # Subscribe to model context updates
+        topic = f"{self._twist.installation_id}/send/{self._device_id}/model/context"
 
-    async def update_received(self, model):
-        if self._added_to_hass:
-            self.async_write_ha_state()
+        @callback
+        def message_received(msg):
+            """Handle new MQTT messages."""
+            try:
+                context = json.loads(msg.payload)
+                if context.get("model_index") == self._model_id:
+                    # Update brightness from context
+                    context_data = context.get("context", [])
+                    if context_data:
+                        # Value is 0-100, convert to 0-255 for HA
+                        brightness_pct = context_data[0].get("value", 0)
+                        self._brightness = round(brightness_pct * 2.55)
+                        self.async_write_ha_state()
+            except (json.JSONDecodeError, KeyError, IndexError):
+                pass
 
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Information about this entity/device."""
-        return {
-            "identifiers": {(DOMAIN, self._twist_light.parent_device.twist_id)},
-            "name": f"{self._twist_light.parent_device.twist_id}",
-            "sw_version": self.sw_version,
-            "model": "Twist Mono Light",
-            "manufacturer": self.manufacturer,
-        }
-
-    @property
-    def supported_features(self) -> LightEntityFeature:
-        """Return supported features."""
-        return LightEntityFeature.TRANSITION
-
-    @property
-    def available(self) -> bool:
-        """Return True if Roller and twist is available."""
-        # return self._twist_light.online and self._twist_light.twist.connected
-        return True
+        await mqtt.async_subscribe(self.hass, topic, message_received, 0)
 
     @property
     def is_on(self) -> bool:
         """Return if the light is on."""
-        return self._twist_light.actual_state != 0
+        return self._brightness != 0
 
     @property
-    def brightness(self) -> int:
+    def brightness(self) -> int | None:
         """Return the brightness of this light between 0..255."""
-        return round(self._twist_light.actual_state * 2.55)
+        return self._brightness
 
     @property
-    def supported_color_modes(self):
-        if type(self._twist_light) is TwistLight.TwistLight:
-            return {ColorMode.BRIGHTNESS}
-        if type(self._twist_light) is TwistRgb.TwistRgb:
-            return {ColorMode.HS}
-        return ColorMode.UNKNOWN
+    def hs_color(self) -> tuple[float, float] | None:
+        """Return the hue and saturation color value [float, float]."""
+        if self._device_type == "RGB":
+            return self._hs_color
+        return None
 
-    @property
-    def color_mode(self):
-        # return ColorMode.BRIGHTNESS
-        if type(self._twist_light) is TwistLight.TwistLight:
-            return ColorMode.BRIGHTNESS
-        if type(self._twist_light) is TwistRgb.TwistRgb:
-            return ColorMode.HS
-        return ColorMode.UNKNOWN
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn the light on."""
+        brightness_pct = 100
+        transition_ms = 0
 
-    async def async_turn_on(self, **kwargs):
-        """Turn the entity on."""
         if ATTR_BRIGHTNESS in kwargs:
-            if ATTR_TRANSITION in kwargs:
-                return await self._twist_light.set_value(
-                    round(kwargs[ATTR_BRIGHTNESS] / 2.55),
-                    round(kwargs[ATTR_TRANSITION] * 1000.0),
-                )
+            brightness_pct = round(kwargs[ATTR_BRIGHTNESS] / 2.55)
+        elif self._brightness > 0:
+            brightness_pct = round(self._brightness / 2.55)
 
-            return await self._twist_light.set_value(
-                round(kwargs[ATTR_BRIGHTNESS] / 2.55)
-            )
-
-        await self._twist_light.turn_on()
-
-    async def async_turn_off(self, **kwargs):
-        """Turn the entity off."""
         if ATTR_TRANSITION in kwargs:
-            return await self._twist_light.set_value(
-                0,
-                round(kwargs[ATTR_TRANSITION] * 1000.0),
-            )
-        await self._twist_light.set_value(0)
+            transition_ms = round(kwargs[ATTR_TRANSITION] * 1000.0)
 
-    # async def async_toggle(self, **kwargs: Any):
-    #     """Toggle the entity."""
-    #     return self._switch.toggle()
+        if ATTR_HS_COLOR in kwargs and self._device_type == "RGB":
+            self._hs_color = kwargs[ATTR_HS_COLOR]
+            # TODO: Send HS color command for RGB lights
+
+        await self._set_brightness(brightness_pct, transition_ms)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn the light off."""
+        transition_ms = 0
+        if ATTR_TRANSITION in kwargs:
+            transition_ms = round(kwargs[ATTR_TRANSITION] * 1000.0)
+
+        await self._set_brightness(0, transition_ms)
+
+    async def _set_brightness(self, brightness_pct: int, transition_ms: int = 0) -> None:
+        """Set the brightness value."""
+        data = {
+            "model_index": self._model_id,
+            "event_id": 4,  # Set value
+            "data": [brightness_pct],
+        }
+
+        if transition_ms > 0:
+            data["transition"] = transition_ms
+
+        json_data = json.dumps(data)
+        topic = f"{self._twist.installation_id}/send/{self._device_id}/event"
+        await mqtt.async_publish(self.hass, topic, json_data, 0, False)

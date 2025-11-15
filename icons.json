@@ -1,0 +1,7 @@
+{
+  "services": {
+    "set_parameter": {
+      "service": "mdi:cog"
+    }
+  }
+}

@@ -72,11 +72,34 @@ class Twist:
 
     async def scan_for_devices(self):
         """Scan for devices."""
+        # NOTE: This method is deprecated and will be replaced by load_devices_from_config
         self.twist_model_list = await self.twist.search_models()
+
+    async def load_devices_from_config(self, device_config_data: list[dict]) -> None:
+        """Load devices from server configuration data.
+
+        Args:
+            device_config_data: List of device dictionaries from device_config.parse_devices()
+        """
+        # Store the raw device configuration
+        # The actual device objects will be created by the platforms
+        self.devices = device_config_data
+        self.twist_model_list = []  # Clear old MQTT-based list
 
     def get_devices(self, class_type) -> list:
         """Get devices of a specific type."""
         return [x for x in self.twist_model_list if isinstance(x, class_type)]
+
+    def get_devices_by_type(self, device_type: str) -> list[dict]:
+        """Get devices by type string from configuration.
+
+        Args:
+            device_type: Device type string (e.g., "Button", "Relay", "Binary_Sensor")
+
+        Returns:
+            List of device configuration dictionaries
+        """
+        return [d for d in self.devices if d.get("type") == device_type]
 
 
 class TwistDevice:

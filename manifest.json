@@ -1,18 +1,17 @@
 {
   "domain": "twist",
   "name": "Twist",
+  "version": "1.0.0",
   "codeowners": [
     "@sgoudsme"
   ],
   "config_flow": true,
   "dependencies": ["mqtt"],
-  "documentation": "https://www.home-assistant.io/integrations/twist_local",
-  "homekit": {},
+  "documentation": "https://www.home-assistant.io/integrations/twist",
+  "integration_type": "hub",
   "iot_class": "local_push",
+  "quality_scale": "bronze",
   "requirements": [
     "twist-innovation-api==0.0.3"
-  ],
-  "ssdp": [],
-  "version": "0.0.1",
-  "zeroconf": []
+  ]
 }

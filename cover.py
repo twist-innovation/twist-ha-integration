@@ -1,142 +1,159 @@
-"""Platform for sensor integration."""
+"""Platform for cover integration."""
 
 from __future__ import annotations
 
+import json
 from typing import Any
-import asyncio
 
+from homeassistant.components import mqtt
 from homeassistant.components.cover import (
+    ATTR_POSITION,
     CoverEntity,
     CoverEntityFeature,
-    ATTR_POSITION,
 )
-
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from . import TwistConfigEntry
 from .const import DOMAIN
-
-from .twist_api import Twist
-from twist import TwistLouvre
-
-from importlib.metadata import version
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: TwistConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Add cover for passed config_entry in HA."""
+    twist = config_entry.runtime_data
 
-    tw_l: Twist = hass.data[DOMAIN]
+    # Get all cover devices (Garage and Louvre types)
+    covers = []
+    for device in twist.devices:
+        device_type = device.get("type", "")
+        if device_type in ("Garage", "Louvre"):
+            covers.append(TwistCover(twist, device, config_entry))
 
-    async_add_entities(
-        HATwistShutter(shutter, config_entry.entry_id)
-        for shutter in tw_l.get_devices(TwistLouvre.TwistLouvre)
-    )
+    async_add_entities(covers)
 
 
-class HATwistShutter(CoverEntity):
-    """Representation of a dummy Cover."""
+class TwistCover(CoverEntity):
+    """Representation of a Twist cover."""
 
     _attr_has_entity_name = True
-    should_poll = False
-    supported_features = (
+    _attr_should_poll = False
+    _attr_supported_features = (
         CoverEntityFeature.OPEN
         | CoverEntityFeature.CLOSE
         | CoverEntityFeature.STOP
         | CoverEntityFeature.SET_POSITION
     )
 
-    def __init__(self, shutter: TwistLouvre.TwistLouvre, entry_id: str) -> None:
-        """Initialize the sensor."""
-        self._twist_shutter = shutter
-        self._entry_id = entry_id
+    def __init__(self, twist, device_config: dict[str, Any], config_entry) -> None:
+        """Initialize the cover."""
+        self._twist = twist
+        self._device_config = device_config
+        self._config_entry = config_entry
 
-        # A unique_id for this entity with in this domain. This means for example if you
-        # have a sensor on this cover, you must ensure the value returned is unique,
-        # which is done here by appending "_cover". For more information, see:
-        # https://developers.home-assistant.io/docs/entity_registry_index/#unique-id-requirements
-        # Note: This is NOT used to generate the user visible Entity ID used in automations.
-        self._attr_unique_id = f"{self._twist_shutter.parent_device.twist_id}_{self._twist_shutter.model_id}"
+        self._device_id = device_config["device_id"]
+        self._model_id = device_config["model_id"]
+        self._device_name = device_config["name"]
+        self._device_type = device_config["type"]
 
-        # This is the name for this *entity*, the "name" attribute from "device_info"
-        # is used as the device name for device screens in the UI. This name is used on
-        # entity screens, and used to build the Entity ID that's used is automations etc.
-        self._attr_name = f"shutter {self._twist_shutter.model_id}"
+        self._current_position = 0
+        self._requested_position = 0
 
-        self.manufacturer = "Twist-Innovation"
-        self.sw_version = None
-        self._added_to_hass = False
+        self._attr_unique_id = f"{self._device_id}_{self._model_id}"
+        self._attr_name = self._device_name or f"{self._device_type} {self._model_id}"
 
-        self._twist_shutter.register_update_cb(self.update_received)
-
-        asyncio.create_task(self._set_version_async())  # set in background
-
-    async def _set_version_async(self):
-        self.sw_version = await asyncio.to_thread(version, "twist-innovation-api")
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, self._device_id)},
+            name=self._device_id,
+            manufacturer="Twist Innovation",
+            model=self._device_type,
+        )
 
     async def async_added_to_hass(self) -> None:
-        """Run when this Entity has been added to HA."""
-        self._added_to_hass = True
+        """Subscribe to MQTT events when added to hass."""
+        await super().async_added_to_hass()
 
-    async def async_will_remove_from_hass(self) -> None:
-        """Entity being removed from hass."""
-        self._added_to_hass = False
+        # Subscribe to model context updates
+        topic = f"{self._twist.installation_id}/send/{self._device_id}/model/context"
 
-    async def update_received(self, model):
-        if self._added_to_hass:
-            self.async_write_ha_state()
+        @callback
+        def message_received(msg):
+            """Handle new MQTT messages."""
+            try:
+                context = json.loads(msg.payload)
+                if context.get("model_index") == self._model_id:
+                    # Update position from context
+                    context_data = context.get("context", [])
+                    if context_data:
+                        raw_value = context_data[0].get("value", 0)
+                        self._current_position = int(raw_value / 65535 * 100)
+                        self.async_write_ha_state()
+            except (json.JSONDecodeError, KeyError, IndexError):
+                pass
 
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Information about this entity/device."""
-        return {
-            "identifiers": {(DOMAIN, self._twist_shutter.parent_device.twist_id)},
-            "name": f"{self._twist_shutter.parent_device.twist_id}",
-            "sw_version": self.sw_version,
-            "model": "Twist Shutter",  # Todo: check the type of the shutter and use that name.
-            "manufacturer": self.manufacturer,
-        }
-
-    @property
-    def available(self) -> bool:
-        """Return True if Roller and twist is available."""
-        return True
+        await mqtt.async_subscribe(self.hass, topic, message_received, 0)
 
     @property
-    def current_cover_position(self):
+    def current_cover_position(self) -> int | None:
         """Return the current position of the cover."""
-        return self._twist_shutter.actual_state
+        return self._current_position
 
     @property
     def is_closed(self) -> bool:
         """Return if the cover is closed, same as position 0."""
-        return self._twist_shutter.actual_state == 0
+        return self._current_position == 0
 
     @property
     def is_closing(self) -> bool:
         """Return if the cover is closing or not."""
-        return self._twist_shutter.actual_state > self._twist_shutter.requested_state
+        return self._current_position > self._requested_position
 
     @property
     def is_opening(self) -> bool:
         """Return if the cover is opening or not."""
-        return self._twist_shutter.actual_state < self._twist_shutter.requested_state
+        return self._current_position < self._requested_position
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
-        await self._twist_shutter.open()
+        await self._set_position(100)
 
     async def async_close_cover(self, **kwargs: Any) -> None:
         """Close the cover."""
-        await self._twist_shutter.close()
+        await self._set_position(0)
 
     async def async_set_cover_position(self, **kwargs: Any) -> None:
-        """Close the cover."""
-        await self._twist_shutter.set_value(kwargs[ATTR_POSITION])
+        """Set the cover position."""
+        position = kwargs[ATTR_POSITION]
+        await self._set_position(position)
 
     async def async_stop_cover(self, **kwargs: Any) -> None:
-        await self._twist_shutter.stop()
+        """Stop the cover."""
+        data = {
+            "model_index": self._model_id,
+            "event_id": 1,  # Stop motor
+            "data": [],
+        }
+        await self._send_command(data)
+
+    async def _set_position(self, position: int) -> None:
+        """Set the requested position."""
+        self._requested_position = position
+        raw_position = int(position * 65535 / 100)
+
+        data = {
+            "model_index": self._model_id,
+            "event_id": 4,  # Set value
+            "data": [int(raw_position / 256), int(raw_position % 256)],
+        }
+
+        await self._send_command(data)
+
+    async def _send_command(self, data: dict) -> None:
+        """Send command via MQTT."""
+        json_data = json.dumps(data)
+        topic = f"{self._twist.installation_id}/send/{self._device_id}/event"
+        await mqtt.async_publish(self.hass, topic, json_data, 0, False)
