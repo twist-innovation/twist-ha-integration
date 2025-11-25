@@ -6,14 +6,15 @@
     },
     "error": {
       "cannot_connect": "Failed to connect",
-      "invalid_auth": "Invalid authentication",
+      "no_devices": "No devices found",
       "unknown": "Unexpected error"
     },
     "step": {
       "user": {
         "data": {
-          "server_url": "Server URL",
-          "api_key": "API key"
+          "backend_url": "Backend URL",
+          "api_key": "API key",
+          "installation_uuid": "Installation UUID"
         }
       }
     }

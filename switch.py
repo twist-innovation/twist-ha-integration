@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
-from homeassistant.components import mqtt
+from twist.TwistRelay import TwistRelay
+
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
@@ -21,13 +21,16 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Add switch entities for passed config_entry in HA."""
-    twist = config_entry.runtime_data
+    twist_api = config_entry.runtime_data
 
-    # Get all relay (switch) devices
+    # Get models from the API and filter for switch types
     switches = []
-    for device in twist.devices:
-        if device.get("type") == "Relay":
-            switches.append(TwistSwitch(twist, device, config_entry))
+    for device in twist_api.device_list:
+        for model in device.model_list:
+            if model is None:
+                continue
+            if isinstance(model, TwistRelay):
+                switches.append(TwistSwitch(model, config_entry))
 
     async_add_entities(switches)
 
@@ -38,83 +41,43 @@ class TwistSwitch(SwitchEntity):
     _attr_has_entity_name = True
     _attr_should_poll = False
 
-    def __init__(self, twist, device_config: dict[str, Any], config_entry) -> None:
+    def __init__(self, model: TwistRelay, config_entry) -> None:
         """Initialize the switch."""
-        self._twist = twist
-        self._device_config = device_config
+        self._model = model
         self._config_entry = config_entry
 
-        self._device_id = device_config["device_id"]
-        self._model_id = device_config["model_id"]
-        self._device_name = device_config["name"]
-
-        self._current_state = False
-
-        self._attr_unique_id = f"{self._device_id}_{self._model_id}"
-        self._attr_name = self._device_name or f"Relay {self._model_id}"
+        self._attr_unique_id = f"{self._model.parent_device.twist_id}_{self._model.model_id}"
+        self._attr_name = getattr(model, 'name', f"Switch {self._model.model_id}")
 
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self._device_id)},
-            name=self._device_id,
+            identifiers={(DOMAIN, str(self._model.parent_device.twist_id))},
+            name=str(self._model.parent_device.twist_id),
             manufacturer="Twist Innovation",
-            model="Relay",
+            model=getattr(model, 'device_type', 'Relay'),
         )
 
     async def async_added_to_hass(self) -> None:
-        """Subscribe to MQTT events when added to hass."""
+        """Run when this entity has been added to HA."""
         await super().async_added_to_hass()
+        self._model.register_update_cb(self._handle_update)
 
-        # Subscribe to model context updates
-        topic = f"{self._twist.installation_id}/send/{self._device_id}/model/context"
-
-        @callback
-        def message_received(msg):
-            """Handle new MQTT messages."""
-            try:
-                context = json.loads(msg.payload)
-                if context.get("model_index") == self._model_id:
-                    # Update state from context
-                    context_data = context.get("context", [])
-                    if context_data:
-                        self._current_state = context_data[0].get("value") == 1
-                        self.async_write_ha_state()
-            except (json.JSONDecodeError, KeyError, IndexError):
-                pass
-
-        await mqtt.async_subscribe(self.hass, topic, message_received, 0)
+    async def _handle_update(self, model: Any) -> None:
+        """Handle updated data from the device."""
+        self.async_write_ha_state()
 
     @property
     def is_on(self) -> bool:
         """Return if the switch is on."""
-        return self._current_state
+        return self._model.state == 1
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
-        data = {
-            "model_index": self._model_id,
-            "event_id": 0,  # Set
-            "data": [],
-        }
-        await self._send_command(data)
+        await self._model.turn_on()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
-        data = {
-            "model_index": self._model_id,
-            "event_id": 1,  # Clear
-            "data": [],
-        }
-        await self._send_command(data)
+        await self._model.turn_off()
 
     async def async_toggle(self, **kwargs: Any) -> None:
         """Toggle the switch."""
-        if self._current_state:
-            await self.async_turn_off()
-        else:
-            await self.async_turn_on()
-
-    async def _send_command(self, data: dict) -> None:
-        """Send command via MQTT."""
-        json_data = json.dumps(data)
-        topic = f"{self._twist.installation_id}/send/{self._device_id}/event"
-        await mqtt.async_publish(self.hass, topic, json_data, 0, False)
+        await self._model.toggle()
