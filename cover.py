@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from twist.TwistGarage import TwistGarage
-from twist.TwistLouvre import TwistLouvre
+from twist.TwistShutter import TwistShutter
 
 from homeassistant.components.cover import (
     ATTR_POSITION,
@@ -34,7 +34,7 @@ async def async_setup_entry(
         for model in device.model_list:
             if model is None:
                 continue
-            if isinstance(model, (TwistLouvre, TwistGarage)):
+            if isinstance(model, (TwistShutter, TwistGarage)):
                 covers.append(TwistCover(model, config_entry))
 
     async_add_entities(covers)
@@ -52,7 +52,7 @@ class TwistCover(CoverEntity):
         | CoverEntityFeature.SET_POSITION
     )
 
-    def __init__(self, model: TwistLouvre | TwistGarage, config_entry) -> None:
+    def __init__(self, model: TwistShutter | TwistGarage, config_entry) -> None:
         """Initialize the cover."""
         self._model = model
         self._config_entry = config_entry
