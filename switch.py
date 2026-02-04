@@ -29,11 +29,19 @@ async def async_setup_entry(
         for model in device.model_list:
             if model is None:
                 continue
-            # Skip models that are not part of a product
-            if not hasattr(model, 'product_name') or model.product_name is None:
-                continue
             if isinstance(model, TwistRelay):
-                switches.append(TwistSwitch(model, config_entry))
+                # Only create entities for models that are part of a product
+                if not hasattr(model, 'product_name') or model.product_name is None:
+                    # Still register callback to avoid crashes, but don't create entity
+                    async def _dummy_callback(m):
+                        pass
+                    await model.register_update_cb(_dummy_callback)
+                    continue
+
+                switch_entity = TwistSwitch(model, config_entry)
+                switches.append(switch_entity)
+                # Register callback before adding entity to avoid race condition with MQTT
+                await model.register_update_cb(switch_entity._handle_update)
 
     async_add_entities(switches)
 
@@ -63,7 +71,7 @@ class TwistSwitch(SwitchEntity):
     async def async_added_to_hass(self) -> None:
         """Run when this entity has been added to HA."""
         await super().async_added_to_hass()
-        self._model.register_update_cb(self._handle_update)
+        # Callback already registered in async_setup_entry before entity creation
 
     async def _handle_update(self, model: Any) -> None:
         """Handle updated data from the device."""

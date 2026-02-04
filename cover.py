@@ -36,15 +36,19 @@ async def async_setup_entry(
             if model is None:
                 continue
 
-            # Skip models that are not part of a product
-            if not hasattr(model, "product_name"):
-                continue
-
-            if model.product_name is None:
-                continue
-
             if isinstance(model, (TwistShutter, TwistGarage)):
-                covers.append(TwistCover(model, config_entry))
+                # Only create entities for models that are part of a product
+                if not hasattr(model, "product_name") or model.product_name is None:
+                    # Still register callback to avoid crashes, but don't create entity
+                    async def _dummy_callback(m):
+                        pass
+                    await model.register_update_cb(_dummy_callback)
+                    continue
+
+                cover_entity = TwistCover(model, config_entry)
+                covers.append(cover_entity)
+                # Register callback before adding entity to avoid race condition with MQTT
+                await model.register_update_cb(cover_entity._handle_update)
     async_add_entities(covers)
 
 
@@ -79,7 +83,7 @@ class TwistCover(CoverEntity):
     async def async_added_to_hass(self) -> None:
         """Run when this entity has been added to hass."""
         await super().async_added_to_hass()
-        self._model.register_update_cb(self._handle_update)
+        # Callback already registered in async_setup_entry before entity creation
 
     async def _handle_update(self, model: Any) -> None:
         """Handle updated data from the device."""

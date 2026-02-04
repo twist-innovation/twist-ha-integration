@@ -27,24 +27,28 @@ async def async_setup_entry(
         for model in device.model_list:
             if model is None:
                 continue
-            # Skip models that are not part of a product
-            if not hasattr(model, 'product_name') or model.product_name is None:
-                continue
             if isinstance(model, TwistButton):
-                # Create device registry entry
-                device_registry.async_get_or_create(
-                    config_entry_id=config_entry.entry_id,
-                    identifiers={(DOMAIN, model.product_name)},
-                    manufacturer="Twist Innovation",
-                    name=model.product_name,
-                )
+                # Create device registry entry only if part of a product
+                if hasattr(model, "product_name") and model.product_name is not None:
+                    device_registry.async_get_or_create(
+                        config_entry_id=config_entry.entry_id,
+                        identifiers={(DOMAIN, model.product_name)},
+                        manufacturer="Twist Innovation",
+                        name=model.product_name,
+                    )
 
-                # Register callback to fire events
+                # Register callback to fire events for ALL buttons (even without product_name)
                 @callback
-                def _fire_button_event(btn_model, btn_device_id=device.twist_id, btn_model_id=model.model_id):
+                async def _fire_button_event(
+                    btn_model,
+                    btn_device_id=device.twist_id,
+                    btn_model_id=model.model_id,
+                ):
                     """Fire an event for button press."""
                     event_data = {
-                        "type": btn_model.state if hasattr(btn_model, 'state') else "pressed",
+                        "type": btn_model.state
+                        if hasattr(btn_model, "state")
+                        else "pressed",
                         "device_id": btn_device_id,
                         "model_id": btn_model_id,
                     }
@@ -53,4 +57,4 @@ async def async_setup_entry(
                         event_data,
                     )
 
-                model.register_update_cb(_fire_button_event)
+                await model.register_update_cb(_fire_button_event)

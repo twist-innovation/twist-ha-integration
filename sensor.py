@@ -30,11 +30,19 @@ async def async_setup_entry(
         for model in device.model_list:
             if model is None:
                 continue
-            # Skip models that are not part of a product
-            if not hasattr(model, 'product_name') or model.product_name is None:
-                continue
             if isinstance(model, (TwistSensor, TwistBinarySensor)):
-                sensors.append(TwistSensorEntity(model, config_entry))
+                # Only create entities for models that are part of a product
+                if not hasattr(model, "product_name") or model.product_name is None:
+                    # Still register callback to avoid crashes, but don't create entity
+                    async def _dummy_callback(m):
+                        pass
+                    await model.register_update_cb(_dummy_callback)
+                    continue
+
+                sensor_entity = TwistSensorEntity(model, config_entry)
+                sensors.append(sensor_entity)
+                # Register callback before adding entity to avoid race condition with MQTT
+                await model.register_update_cb(sensor_entity._handle_update)
 
     async_add_entities(sensors)
 
@@ -53,7 +61,7 @@ class TwistSensorEntity(SensorEntity):
         # Use device twist_id + model_id for truly unique ID
         device_id = self._model.parent_device.twist_id
         self._attr_unique_id = f"twist_{device_id}_{self._model.model_id}"
-        self._attr_name = getattr(model, 'name', f"Sensor {self._model.model_id}")
+        self._attr_name = getattr(model, "name", f"Sensor {self._model.model_id}")
 
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self._model.product_name)},
@@ -64,7 +72,7 @@ class TwistSensorEntity(SensorEntity):
     async def async_added_to_hass(self) -> None:
         """Run when this entity has been added to HA."""
         await super().async_added_to_hass()
-        self._model.register_update_cb(self._handle_update)
+        # Callback already registered in async_setup_entry before entity creation
 
     async def _handle_update(self, model: Any) -> None:
         """Handle updated data from the device."""
@@ -73,4 +81,4 @@ class TwistSensorEntity(SensorEntity):
     @property
     def native_value(self) -> str | int | float | None:
         """Return the state of the sensor."""
-        return getattr(self._model, 'value', None)
+        return getattr(self._model, "value", None)

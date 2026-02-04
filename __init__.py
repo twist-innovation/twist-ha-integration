@@ -67,14 +67,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: TwistConfigEntry) -> boo
 
         async def mqtt_subscribe(topic: str, callback) -> None:
             """Subscribe to MQTT topic."""
+
             # Wrap the callback to match HA MQTT signature
             async def wrapped_callback(msg):
                 """Wrap callback to extract topic and payload from message."""
                 # Payload is already a string in HA MQTT
-                payload = msg.payload if isinstance(msg.payload, str) else msg.payload.decode()
+                payload = (
+                    msg.payload
+                    if isinstance(msg.payload, str)
+                    else msg.payload.decode()
+                )
                 await callback(msg.topic, payload)
 
             await mqtt.async_subscribe(hass, topic, wrapped_callback, 0)
+
+        # Set up MQTT publish first so entities can send messages during registration
+        twist_api.set_mqtt_publish(mqtt_publish)
 
     except Exception as ex:
         _LOGGER.exception("Failed to set up Twist integration")
@@ -84,11 +92,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: TwistConfigEntry) -> boo
 
     entry.runtime_data = twist_api
 
-    # Set up platforms first so entities can register their callbacks
+    # Set up platforms - entities can now register callbacks and send messages
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    # Now add MQTT after entities have been set up
-    await twist_api.add_mqtt(mqtt_publish, mqtt_subscribe)
+    # Now set up MQTT subscribe to start receiving messages
+    await twist_api.set_mqtt_subscribe(mqtt_subscribe)
 
     return True
 
