@@ -23,8 +23,6 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from . import TwistConfigEntry
 from .const import DOMAIN
 
-_LOGGER = logging.getLogger(__name__)
-
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -36,53 +34,21 @@ async def async_setup_entry(
 
     # Get models from the API and filter for light types
     lights = []
-    _LOGGER.info("Starting light setup, scanning devices")
     for device in twist_api.device_list:
-        _LOGGER.info("Processing device: %s", getattr(device, "name", "Unknown"))
         for model in device.model_list:
-            model_type = type(model).__name__
-            model_id = getattr(model, "model_id", "unknown")
-            model_name = getattr(model, "name", "unknown")
-
-            _LOGGER.info(
-                "Found model: type=%s, id=%s, name=%s", model_type, model_id, model_name
-            )
-
             if model is None:
-                _LOGGER.debug("Skipping None model")
                 continue
 
             # Skip models that are not part of a product
             if not hasattr(model, "product_name"):
-                _LOGGER.warning(
-                    "Skipping model %s (%s): no product_name attribute",
-                    model_name,
-                    model_id,
-                )
                 continue
 
             if model.product_name is None:
-                _LOGGER.warning(
-                    "Skipping model %s (%s): product_name is None", model_name, model_id
-                )
                 continue
 
-            _LOGGER.info(
-                "Model %s (%s) has product_name: %s",
-                model_name,
-                model_id,
-                model.product_name,
-            )
-
             if isinstance(model, (TwistLight, TwistRgb)):
-                _LOGGER.info("Adding light entity for %s (%s)", model_name, model_id)
                 lights.append(TwistLightEntity(model, config_entry))
-            else:
-                _LOGGER.debug(
-                    "Model %s is not a light type (is %s)", model_name, model_type
-                )
 
-    _LOGGER.info("Light setup complete: added %d lights", len(lights))
     async_add_entities(lights)
 
 
@@ -157,7 +123,7 @@ class TwistLightEntity(LightEntity):
             # Get current values as defaults (API uses H: 0-360, S: 0-100, V: 0-100)
             hue = self._model.actual_h
             saturation = self._model.actual_s
-            value = self._model.actual_v
+            value = 100
 
             # Update with requested values
             if ATTR_HS_COLOR in kwargs:
@@ -191,8 +157,20 @@ class TwistLightEntity(LightEntity):
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the light off."""
-        if ATTR_TRANSITION in kwargs:
-            transition_ms = round(kwargs[ATTR_TRANSITION] * 1000.0)
-            await self._model.set_value(0, transition_ms)
+        if isinstance(self._model, TwistRgb):
+            # For RGB lights, turn off by setting V to 0
+            if ATTR_TRANSITION in kwargs:
+                transition_ms = round(kwargs[ATTR_TRANSITION] * 1000.0)
+                await self._model.set_value(
+                    [self._model.actual_h, self._model.actual_s, 0], transition_ms
+                )
+            else:
+                await self._model.set_value(
+                    [self._model.actual_h, self._model.actual_s, 0]
+                )
         else:
-            await self._model.set_value(0)
+            if ATTR_TRANSITION in kwargs:
+                transition_ms = round(kwargs[ATTR_TRANSITION] * 1000.0)
+                await self._model.set_value(0, transition_ms)
+            else:
+                await self._model.set_value(0)
