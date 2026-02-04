@@ -19,11 +19,15 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 
-STEP_USER_DATA_SCHEMA = vol.Schema({
-    vol.Required("backend_url", default="https://backbone-dev.twist-innovation.com"): str,
-    vol.Required("api_key"): str,
-    vol.Required("installation_uuid", default="900a2051-3dad-4ab6-ba13-f13c6ecc4e2a"): str,
-})
+STEP_USER_DATA_SCHEMA = vol.Schema(
+    {
+        vol.Required(
+            "backend_url", default="https://backbone-dev.twist-innovation.com"
+        ): str,
+        vol.Required("api_key"): str,
+        vol.Required("installation_uuid"): str,
+    }
+)
 
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
@@ -48,7 +52,9 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
         installation_id = twist_api.installation_id
 
-        _LOGGER.info("Successfully validated Twist connection, found %d models", len(models))
+        _LOGGER.info(
+            "Successfully validated Twist connection, found %d models", len(models)
+        )
 
     except Exception as err:
         _LOGGER.error("Failed to connect to Twist backend: %s", err)
