@@ -30,6 +30,9 @@ async def async_setup_entry(
         for model in device.model_list:
             if model is None:
                 continue
+            # Skip models that are not part of a product
+            if not hasattr(model, 'product_name') or model.product_name is None:
+                continue
             if isinstance(model, (TwistSensor, TwistBinarySensor)):
                 sensors.append(TwistSensorEntity(model, config_entry))
 
@@ -47,14 +50,15 @@ class TwistSensorEntity(SensorEntity):
         self._model = model
         self._config_entry = config_entry
 
-        self._attr_unique_id = f"{self._model.parent_device.twist_id}_{self._model.model_id}"
+        # Use device twist_id + model_id for truly unique ID
+        device_id = self._model.parent_device.twist_id
+        self._attr_unique_id = f"twist_{device_id}_{self._model.model_id}"
         self._attr_name = getattr(model, 'name', f"Sensor {self._model.model_id}")
 
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, str(self._model.parent_device.twist_id))},
-            name=str(self._model.parent_device.twist_id),
+            identifiers={(DOMAIN, self._model.product_name)},
+            name=self._model.product_name,
             manufacturer="Twist Innovation",
-            model=getattr(model, 'device_type', 'Sensor'),
         )
 
     async def async_added_to_hass(self) -> None:

@@ -27,14 +27,16 @@ async def async_setup_entry(
         for model in device.model_list:
             if model is None:
                 continue
+            # Skip models that are not part of a product
+            if not hasattr(model, 'product_name') or model.product_name is None:
+                continue
             if isinstance(model, TwistButton):
                 # Create device registry entry
                 device_registry.async_get_or_create(
                     config_entry_id=config_entry.entry_id,
-                    identifiers={(DOMAIN, str(model.parent_device.twist_id))},
+                    identifiers={(DOMAIN, model.product_name)},
                     manufacturer="Twist Innovation",
-                    name=getattr(model, 'name', str(model.parent_device.twist_id)),
-                    model="Button",
+                    name=model.product_name,
                 )
 
                 # Register callback to fire events

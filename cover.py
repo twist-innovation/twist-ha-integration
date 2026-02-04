@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from twist.TwistGarage import TwistGarage
@@ -19,6 +20,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from . import TwistConfigEntry
 from .const import DOMAIN
 
+_LOGGER = logging.getLogger(__name__)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -30,13 +33,38 @@ async def async_setup_entry(
 
     # Get models from the API and filter for cover types
     covers = []
+    _LOGGER.info("Starting cover setup, scanning devices")
     for device in twist_api.device_list:
+        _LOGGER.info("Processing device: %s", getattr(device, 'name', 'Unknown'))
         for model in device.model_list:
-            if model is None:
-                continue
-            if isinstance(model, (TwistShutter, TwistGarage)):
-                covers.append(TwistCover(model, config_entry))
+            model_type = type(model).__name__
+            model_id = getattr(model, 'model_id', 'unknown')
+            model_name = getattr(model, 'name', 'unknown')
 
+            _LOGGER.info("Found model: type=%s, id=%s, name=%s", model_type, model_id, model_name)
+
+            if model is None:
+                _LOGGER.debug("Skipping None model")
+                continue
+
+            # Skip models that are not part of a product
+            if not hasattr(model, 'product_name'):
+                _LOGGER.warning("Skipping model %s (%s): no product_name attribute", model_name, model_id)
+                continue
+
+            if model.product_name is None:
+                _LOGGER.warning("Skipping model %s (%s): product_name is None", model_name, model_id)
+                continue
+
+            _LOGGER.info("Model %s (%s) has product_name: %s", model_name, model_id, model.product_name)
+
+            if isinstance(model, (TwistShutter, TwistGarage)):
+                _LOGGER.info("Adding cover entity for %s (%s)", model_name, model_id)
+                covers.append(TwistCover(model, config_entry))
+            else:
+                _LOGGER.debug("Model %s is not a cover type (is %s)", model_name, model_type)
+
+    _LOGGER.info("Cover setup complete: added %d covers", len(covers))
     async_add_entities(covers)
 
 
@@ -57,16 +85,15 @@ class TwistCover(CoverEntity):
         self._model = model
         self._config_entry = config_entry
 
-        self._attr_unique_id = (
-            f"{self._model.parent_device.twist_id}_{self._model.model_id}"
-        )
+        # Use device twist_id + model_id for truly unique ID
+        device_id = self._model.parent_device.twist_id
+        self._attr_unique_id = f"twist_{device_id}_{self._model.model_id}"
         self._attr_name = getattr(model, 'name', f"Cover {self._model.model_id}")
 
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, str(self._model.parent_device.twist_id))},
-            name=str(self._model.parent_device.twist_id),
+            identifiers={(DOMAIN, self._model.product_name)},
+            name=self._model.product_name,
             manufacturer="Twist Innovation",
-            model=getattr(model, 'device_type', 'Cover'),
         )
 
     async def async_added_to_hass(self) -> None:
