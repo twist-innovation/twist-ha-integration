@@ -50,13 +50,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: TwistConfigEntry) -> boo
             installation_uuid=entry.data["installation_uuid"],
         )
 
-        # Fetch models from backend first (this sets installation_id)
+        # Fetch models from backend first (this sets installation_id and installation_name)
         models = await twist_api.get_models()
 
+        # Update config entry title with installation name
+        if twist_api.installation_name and entry.title != twist_api.installation_name:
+            hass.config_entries.async_update_entry(
+                entry, title=twist_api.installation_name
+            )
+
         _LOGGER.info(
-            "Loaded %d models from Twist installation %s (ID: %s)",
+            "Loaded %d models from Twist installation '%s' (ID: %s)",
             len(models),
-            entry.data["installation_uuid"],
+            twist_api.installation_name or entry.data["installation_uuid"],
             twist_api.installation_id,
         )
 
