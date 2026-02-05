@@ -11,7 +11,7 @@
   "iot_class": "local_push",
   "quality_scale": "bronze",
   "requirements": [
-    "twist-innovation-api==0.0.8"
+    "twist-innovation-api==0.0.9"
   ],
   "version": "1.0.0"
 }
