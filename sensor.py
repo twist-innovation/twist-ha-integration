@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from twist.TwistBinarySensor import TwistBinarySensor
-from twist.TwistSensor import TwistSensor
+from twist.TwistTemperature import TwistTemperature
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import HomeAssistant, callback
@@ -30,12 +30,13 @@ async def async_setup_entry(
         for model in device.model_list:
             if model is None:
                 continue
-            if isinstance(model, (TwistSensor, TwistBinarySensor)):
+            if isinstance(model, (TwistTemperature, TwistBinarySensor)):
                 # Only create entities for models that are part of a product
                 if not hasattr(model, "product_name") or model.product_name is None:
                     # Still register callback to avoid crashes, but don't create entity
                     async def _dummy_callback(m):
                         pass
+
                     await model.register_update_cb(_dummy_callback)
                     continue
 
@@ -53,7 +54,9 @@ class TwistSensorEntity(SensorEntity):
     _attr_has_entity_name = True
     _attr_should_poll = False
 
-    def __init__(self, model: TwistSensor | TwistBinarySensor, config_entry) -> None:
+    def __init__(
+        self, model: TwistTemperature | TwistBinarySensor, config_entry
+    ) -> None:
         """Initialize the sensor."""
         self._model = model
         self._config_entry = config_entry
@@ -81,4 +84,9 @@ class TwistSensorEntity(SensorEntity):
     @property
     def native_value(self) -> str | int | float | None:
         """Return the state of the sensor."""
-        return getattr(self._model, "value", None)
+        if isinstance(self._model, TwistTemperature):
+            return self._model.actual_state
+        if isinstance(self._model, TwistBinarySensor):
+            # Binary sensor not fully implemented yet, but use actual_state when available
+            return getattr(self._model, "actual_state", None)
+        return None
