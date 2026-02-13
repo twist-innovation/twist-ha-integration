@@ -56,16 +56,16 @@ async def async_validate_trigger_config(
     return TRIGGER_SCHEMA(config)
 
 
-async def async_get_triggers(
+def _get_button_subtypes_by_device_id(
     hass: HomeAssistant, device_id: str
-) -> list[dict[str, Any]]:
-    """List device triggers for Twist button devices."""
+) -> dict[int, str]:
+    """Return button model IDs and names for a Home Assistant device."""
     from homeassistant.helpers import device_registry as dr
     from twist.TwistButton import TwistButton
 
     config_entries = hass.config_entries.async_entries(DOMAIN)
     device_registry = dr.async_get(hass)
-    button_model_ids: list[int] = []
+    subtypes: dict[int, str] = {}
 
     for entry in config_entries:
         if not hasattr(entry, "runtime_data"):
@@ -86,12 +86,20 @@ async def async_get_triggers(
                 )
 
                 if device_entry and device_entry.id == device_id:
-                    button_model_ids.append(model.model_id)
+                    subtypes[model.model_id] = getattr(
+                        model, "name", f"Button {model.model_id}"
+                    )
 
-    if not button_model_ids:
+    return subtypes
+
+
+async def async_get_triggers(
+    hass: HomeAssistant, device_id: str
+) -> list[dict[str, Any]]:
+    """List device triggers for Twist button devices."""
+    subtypes = _get_button_subtypes_by_device_id(hass, device_id)
+    if not subtypes:
         return []
-
-    button_model_ids = sorted(set(button_model_ids))
 
     return [
         {
@@ -101,7 +109,7 @@ async def async_get_triggers(
             CONF_TYPE: event_type,
             CONF_SUBTYPE: model_id,
         }
-        for model_id in button_model_ids
+        for model_id in sorted(subtypes)
         for event_type in TRIGGER_TYPE_SCHEMA
     ]
 
@@ -135,42 +143,17 @@ async def async_get_trigger_capabilities(
     hass: HomeAssistant, config: ConfigType
 ) -> dict[str, vol.Schema]:
     """List trigger capabilities."""
-    # Get button names for the subtype selector
     device_id = config[CONF_DEVICE_ID]
     _LOGGER.debug("Getting trigger capabilities for device_id: %s", device_id)
-
-    # Build a mapping of model_id to button name
-    subtype_names = {}
-    config_entries = hass.config_entries.async_entries(DOMAIN)
-
-    for entry in config_entries:
-        if not hasattr(entry, "runtime_data"):
-            continue
-
-        twist_api = entry.runtime_data
-        from homeassistant.helpers import device_registry as dr
-        from twist.TwistButton import TwistButton
-
-        device_registry = dr.async_get(hass)
-
-        for twist_device in twist_api.device_list:
-            for model in twist_device.model_list:
-                if model is None or not isinstance(model, TwistButton):
-                    continue
-
-                if not hasattr(model, "product_name") or model.product_name is None:
-                    continue
-
-                device_entry = device_registry.async_get_device(
-                    identifiers={(DOMAIN, model.product_name)}
-                )
-
-                if device_entry and device_entry.id == device_id:
-                    button_name = getattr(model, "name", f"Button {model.model_id}")
-                    subtype_names[model.model_id] = button_name
+    subtype_names = _get_button_subtypes_by_device_id(hass, device_id)
 
     # Return the subtype mapping for the UI
-    _LOGGER.debug("Found %s buttons for device %s: %s", len(subtype_names), device_id, subtype_names)
+    _LOGGER.debug(
+        "Found %s buttons for device %s: %s",
+        len(subtype_names),
+        device_id,
+        subtype_names,
+    )
     return {
         "extra_fields": vol.Schema(
             {
