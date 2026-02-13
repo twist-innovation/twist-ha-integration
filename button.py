@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from twist.TwistButton import TwistButton
 
 from homeassistant.core import HomeAssistant, callback
@@ -9,7 +11,9 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import TwistConfigEntry
-from .const import DOMAIN
+from .const import BUTTON_EVENT_TYPES, DOMAIN
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -45,12 +49,21 @@ async def async_setup_entry(
                     btn_model_id=model.model_id,
                 ):
                     """Fire an event for button press."""
-                    # Get button event type name
-                    event_type = "unknown"
-                    if hasattr(btn_model, "last_event") and btn_model.last_event:
-                        event_type = btn_model.last_event.name.lower()
-                    elif hasattr(btn_model, "state"):
-                        event_type = str(btn_model.state)
+                    event_type: str | None = None
+                    if hasattr(btn_model, "last_event") and btn_model.last_event is not None:
+                        last_event = btn_model.last_event
+                        event_type = getattr(last_event, "name", str(last_event)).lower()
+                    elif hasattr(btn_model, "state") and btn_model.state is not None:
+                        state = btn_model.state
+                        event_type = getattr(state, "name", str(state)).lower()
+
+                    if event_type not in BUTTON_EVENT_TYPES:
+                        _LOGGER.debug(
+                            "Ignoring unsupported button event '%s' for model_id=%s",
+                            event_type,
+                            btn_model_id,
+                        )
+                        return
 
                     event_data = {
                         "device_id": btn_device_id,

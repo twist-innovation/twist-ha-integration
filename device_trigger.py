@@ -18,7 +18,7 @@ from homeassistant.const import (
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.helpers.typing import ConfigType
 
-from .const import DOMAIN
+from .const import BUTTON_EVENT_TYPES, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ TRIGGER_TYPE_SCHEMA = {
     "double_long_release": "Double long press released",
 }
 
-TRIGGER_TYPES = set(TRIGGER_TYPE_SCHEMA.keys())
+TRIGGER_TYPES = set(BUTTON_EVENT_TYPES)
 
 # Additional config for button subtype (model_id)
 CONF_SUBTYPE = "subtype"
@@ -60,13 +60,12 @@ async def async_get_triggers(
     hass: HomeAssistant, device_id: str
 ) -> list[dict[str, Any]]:
     """List device triggers for Twist button devices."""
-    # Check if this device has any button models
     from homeassistant.helpers import device_registry as dr
     from twist.TwistButton import TwistButton
 
     config_entries = hass.config_entries.async_entries(DOMAIN)
     device_registry = dr.async_get(hass)
-    has_buttons = False
+    button_model_ids: list[int] = []
 
     for entry in config_entries:
         if not hasattr(entry, "runtime_data"):
@@ -87,19 +86,12 @@ async def async_get_triggers(
                 )
 
                 if device_entry and device_entry.id == device_id:
-                    has_buttons = True
-                    break
+                    button_model_ids.append(model.model_id)
 
-            if has_buttons:
-                break
-
-        if has_buttons:
-            break
-
-    # If this device has buttons, create one trigger per event type
-    # User will select which specific button via the subtype dropdown
-    if not has_buttons:
+    if not button_model_ids:
         return []
+
+    button_model_ids = sorted(set(button_model_ids))
 
     return [
         {
@@ -107,7 +99,9 @@ async def async_get_triggers(
             CONF_DEVICE_ID: device_id,
             CONF_DOMAIN: DOMAIN,
             CONF_TYPE: event_type,
+            CONF_SUBTYPE: model_id,
         }
+        for model_id in button_model_ids
         for event_type in TRIGGER_TYPE_SCHEMA
     ]
 
