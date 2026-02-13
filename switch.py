@@ -80,7 +80,7 @@ class TwistSwitch(SwitchEntity):
     @property
     def is_on(self) -> bool:
         """Return if the switch is on."""
-        return self._model.state == 1
+        return self._model.actual_state != 0
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
