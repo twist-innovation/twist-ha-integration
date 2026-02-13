@@ -45,16 +45,19 @@ async def async_setup_entry(
                     btn_model_id=model.model_id,
                 ):
                     """Fire an event for button press."""
+                    # Get button event type name
+                    event_type = "unknown"
+                    if hasattr(btn_model, "last_event") and btn_model.last_event:
+                        event_type = btn_model.last_event.name.lower()
+                    elif hasattr(btn_model, "state"):
+                        event_type = str(btn_model.state)
+
                     event_data = {
-                        "type": btn_model.state
-                        if hasattr(btn_model, "state")
-                        else "pressed",
                         "device_id": btn_device_id,
                         "model_id": btn_model_id,
+                        "type": event_type,
                     }
-                    hass.bus.async_fire(
-                        f"twist.button_{btn_device_id}_{btn_model_id}",
-                        event_data,
-                    )
+                    # Fire single event type for device triggers
+                    hass.bus.async_fire("twist_button_event", event_data)
 
                 await model.register_update_cb(_fire_button_event)

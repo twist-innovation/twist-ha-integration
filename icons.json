@@ -1,7 +1,7 @@
 {
   "services": {
     "set_parameter": {
-      "service": "mdi:cog"
+      "icon": "mdi:cog"
     }
   }
 }

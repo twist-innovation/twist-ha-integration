@@ -41,5 +41,20 @@
             "name": "Set parameter"
         }
     },
+    "device_automation": {
+        "trigger_type": {
+            "push": "Pushed",
+            "release": "Released",
+            "long_push": "Long pressed",
+            "long_release": "Long press released",
+            "double_push": "Double clicked",
+            "double_release": "Double click released",
+            "double_long_push": "Double long pressed",
+            "double_long_release": "Double long press released"
+        },
+        "extra_fields": {
+            "subtype": "Button"
+        }
+    },
     "title": "Twist"
 }
