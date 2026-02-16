@@ -50,6 +50,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
             raise NoDevicesFound
 
         installation_id = twist_api.installation_id
+        installation_name = twist_api.installation_name
 
         _LOGGER.info(
             "Successfully validated Twist connection, found %d models", len(models)
@@ -62,6 +63,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     # Return info that you want to store in the config entry
     return {
         "installation_id": installation_id,
+        "installation_name": installation_name,
         "installation_uuid": data["installation_uuid"],
         "backend_url": data["backend_url"],
         "api_key": data["api_key"],
@@ -94,7 +96,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._abort_if_unique_id_configured()
 
                 return self.async_create_entry(
-                    title=f"Twist {info['installation_uuid']}",
+                    title=info["installation_name"] or f"Twist {info['installation_uuid']}",
                     data=user_input,
                 )
 
