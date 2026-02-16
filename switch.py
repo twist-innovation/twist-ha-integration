@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from twist.TwistRelay import TwistRelay
-
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from twist.TwistRelay import TwistRelay
 
 from . import TwistConfigEntry
 from .const import DOMAIN

@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import logging
 
-from twist import TwistAPI
-
 from homeassistant.components import mqtt
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
+from twist import TwistAPI
 
 from .const import DOMAIN
 

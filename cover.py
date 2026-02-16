@@ -5,9 +5,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from twist.TwistGarage import TwistGarage
-from twist.TwistShutter import TwistShutter
-
 from homeassistant.components.cover import (
     ATTR_POSITION,
     CoverEntity,
@@ -16,6 +13,8 @@ from homeassistant.components.cover import (
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from twist.TwistGarage import TwistGarage
+from twist.TwistShutter import TwistShutter
 
 from . import TwistConfigEntry
 from .const import DOMAIN

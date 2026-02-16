@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from twist.TwistBinarySensor import TwistBinarySensor
-from twist.TwistTemperature import TwistTemperature
-
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from twist.TwistBinarySensor import TwistBinarySensor
+from twist.TwistTemperature import TwistTemperature
 
 from . import TwistConfigEntry
 from .const import DOMAIN

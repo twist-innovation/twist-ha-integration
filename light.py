@@ -5,9 +5,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from twist.TwistLight import TwistLight
-from twist.TwistRgb import TwistRgb
-
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
     ATTR_HS_COLOR,
@@ -19,6 +16,8 @@ from homeassistant.components.light import (
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from twist.TwistLight import TwistLight
+from twist.TwistRgb import TwistRgb
 
 from . import TwistConfigEntry
 from .const import DOMAIN

@@ -5,14 +5,13 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from twist import TwistAPI
-
 import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from twist import TwistAPI
 
 from .const import DOMAIN
 

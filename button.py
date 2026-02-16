@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import logging
 
-from twist.TwistButton import TwistButton
-
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from twist.TwistButton import TwistButton
 
 from . import TwistConfigEntry
 from .const import BUTTON_EVENT_TYPES, DOMAIN
