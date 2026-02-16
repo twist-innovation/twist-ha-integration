@@ -3,28 +3,20 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
 
 from twist import TwistAPI
 
-from homeassistant import config_entries
 from homeassistant.components import mqtt
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import config_validation as cv
 
 from .const import DOMAIN
-
-if TYPE_CHECKING:
-    from homeassistant.config_entries import ConfigType
 
 type TwistConfigEntry = ConfigEntry[TwistAPI]
 
 _LOGGER = logging.getLogger(__name__)
-
-CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 PLATFORMS: list[Platform] = [
     Platform.BUTTON,
@@ -33,11 +25,6 @@ PLATFORMS: list[Platform] = [
     Platform.SENSOR,
     Platform.SWITCH,
 ]
-
-
-async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up the Twist component."""
-    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: TwistConfigEntry) -> bool:

@@ -19,30 +19,6 @@
       }
     }
   },
-  "services": {
-    "set_parameter": {
-      "name": "Set parameter",
-      "description": "Set a custom parameter on a Twist device.",
-      "fields": {
-        "device_id": {
-          "name": "Device ID",
-          "description": "The Twist device ID."
-        },
-        "model_index": {
-          "name": "Model index",
-          "description": "The model index of the device."
-        },
-        "parameter_index": {
-          "name": "Parameter index",
-          "description": "The parameter index to set."
-        },
-        "value": {
-          "name": "Value",
-          "description": "The value to set for the parameter."
-        }
-      }
-    }
-  },
   "device_automation": {
     "trigger_type": {
       "push": "Pushed",
