@@ -11,7 +11,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from twist import TwistAPI
 
-
 type TwistConfigEntry = ConfigEntry[TwistAPI]
 
 _LOGGER = logging.getLogger(__name__)
