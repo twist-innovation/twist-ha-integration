@@ -51,7 +51,7 @@ async def async_setup_entry(
                 light_entity = TwistLightEntity(model, config_entry)
                 lights.append(light_entity)
                 # Register callback before adding entity to avoid race condition with MQTT
-                await model.register_update_cb(light_entity._handle_update)
+                await model.register_update_cb(light_entity.handle_update)
 
     async_add_entities(lights)
 
@@ -92,7 +92,7 @@ class TwistLightEntity(LightEntity):
         await super().async_added_to_hass()
         # Callback already registered in async_setup_entry before entity creation
 
-    async def _handle_update(self, model: Any) -> None:
+    async def handle_update(self, model: Any) -> None:
         """Handle updated data from the device."""
         self.async_write_ha_state()
 

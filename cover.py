@@ -48,7 +48,7 @@ async def async_setup_entry(
                 cover_entity = TwistCover(model, config_entry)
                 covers.append(cover_entity)
                 # Register callback before adding entity to avoid race condition with MQTT
-                await model.register_update_cb(cover_entity._handle_update)
+                await model.register_update_cb(cover_entity.handle_update)
     async_add_entities(covers)
 
 
@@ -85,7 +85,7 @@ class TwistCover(CoverEntity):
         await super().async_added_to_hass()
         # Callback already registered in async_setup_entry before entity creation
 
-    async def _handle_update(self, model: Any) -> None:
+    async def handle_update(self, model: Any) -> None:
         """Handle updated data from the device."""
         self.async_write_ha_state()
 
