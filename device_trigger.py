@@ -15,7 +15,7 @@ from homeassistant.const import (
     CONF_PLATFORM,
     CONF_TYPE,
 )
-from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
+from homeassistant.core import CALLBACK_TYPE, HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 
 from .const import BUTTON_EVENT_TYPES, DOMAIN
@@ -155,9 +155,5 @@ async def async_get_trigger_capabilities(
         subtype_names,
     )
     return {
-        "extra_fields": vol.Schema(
-            {
-                vol.Required(CONF_SUBTYPE): vol.In(subtype_names)
-            }
-        )
+        "extra_fields": vol.Schema({vol.Required(CONF_SUBTYPE): vol.In(subtype_names)})
     }

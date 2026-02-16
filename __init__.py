@@ -11,7 +11,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from twist import TwistAPI
 
-from .const import DOMAIN
 
 type TwistConfigEntry = ConfigEntry[TwistAPI]
 

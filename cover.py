@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from homeassistant.components.cover import (
@@ -10,7 +9,7 @@ from homeassistant.components.cover import (
     CoverEntity,
     CoverEntityFeature,
 )
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from twist.TwistGarage import TwistGarage
@@ -41,6 +40,7 @@ async def async_setup_entry(
                     # Still register callback to avoid crashes, but don't create entity
                     async def _dummy_callback(m):
                         pass
+
                     await model.register_update_cb(_dummy_callback)
                     continue
 

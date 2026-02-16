@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from homeassistant.components.light import (
@@ -44,6 +43,7 @@ async def async_setup_entry(
                     # Still register callback to avoid crashes, but don't create entity
                     async def _dummy_callback(m):
                         pass
+
                     await model.register_update_cb(_dummy_callback)
                     continue
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from twist.TwistRelay import TwistRelay
@@ -30,10 +30,11 @@ async def async_setup_entry(
                 continue
             if isinstance(model, TwistRelay):
                 # Only create entities for models that are part of a product
-                if not hasattr(model, 'product_name') or model.product_name is None:
+                if not hasattr(model, "product_name") or model.product_name is None:
                     # Still register callback to avoid crashes, but don't create entity
                     async def _dummy_callback(m):
                         pass
+
                     await model.register_update_cb(_dummy_callback)
                     continue
 
@@ -59,7 +60,7 @@ class TwistSwitch(SwitchEntity):
         # Use device twist_id + model_id for truly unique ID
         device_id = self._model.parent_device.twist_id
         self._attr_unique_id = f"twist_{device_id}_{self._model.model_id}"
-        self._attr_name = getattr(model, 'name', f"Switch {self._model.model_id}")
+        self._attr_name = getattr(model, "name", f"Switch {self._model.model_id}")
 
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self._model.product_name)},
