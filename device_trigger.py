@@ -1,4 +1,10 @@
-"""Provides device triggers for Twist buttons."""
+"""Provides device triggers for Twist buttons.
+
+ID terminology:
+- twist_id: The hardware device ID from the Twist API (int)
+- device_id: The Home Assistant device registry UUID (str)
+- model_id: The model index within a Twist device (int)
+"""
 
 from __future__ import annotations
 
@@ -40,7 +46,7 @@ CONF_SUBTYPE = "subtype"
 
 TRIGGER_SCHEMA = DEVICE_TRIGGER_BASE_SCHEMA.extend(
     {
-        vol.Required(CONF_TYPE): vol.In(TRIGGER_TYPES),  # Validate against keys
+        vol.Required(CONF_TYPE): vol.In(TRIGGER_TYPES),
         vol.Required(CONF_SUBTYPE): vol.Coerce(int),
     }
 )
@@ -55,12 +61,12 @@ async def async_validate_trigger_config(
 
 def _get_button_info_by_device_id(
     hass: HomeAssistant, device_id: str
-) -> tuple[str | None, dict[int, str]]:
-    """Return twist device ID and button model IDs for a Home Assistant device."""
+) -> tuple[int | None, dict[int, str]]:
+    """Return twist_id and button model IDs for a HA device_id."""
 
     config_entries = hass.config_entries.async_entries(DOMAIN)
     device_registry = dr.async_get(hass)
-    twist_device_id: str | None = None
+    twist_id: int | None = None
     subtypes: dict[int, str] = {}
 
     for entry in config_entries:
@@ -82,19 +88,19 @@ def _get_button_info_by_device_id(
                 )
 
                 if device_entry and device_entry.id == device_id:
-                    twist_device_id = twist_device.twist_id
+                    twist_id = twist_device.twist_id
                     subtypes[model.model_id] = getattr(
                         model, "name", f"Button {model.model_id}"
                     )
 
-    return twist_device_id, subtypes
+    return twist_id, subtypes
 
 
 async def async_get_triggers(
     hass: HomeAssistant, device_id: str
 ) -> list[dict[str, Any]]:
     """List device triggers for Twist button devices."""
-    _twist_device_id, subtypes = _get_button_info_by_device_id(hass, device_id)
+    _twist_id, subtypes = _get_button_info_by_device_id(hass, device_id)
     if not subtypes:
         return []
 
@@ -119,16 +125,17 @@ async def async_attach_trigger(
 ) -> CALLBACK_TYPE:
     """Attach a trigger."""
     event_type = config[CONF_TYPE]
-    twist_device_id, _subtypes = _get_button_info_by_device_id(
+    twist_id, _subtypes = _get_button_info_by_device_id(
         hass, config[CONF_DEVICE_ID]
     )
 
+    # Match on twist_id + model_id + type to avoid cross-device ghost triggers
     event_config = event_trigger.TRIGGER_SCHEMA(
         {
             event_trigger.CONF_PLATFORM: "event",
             event_trigger.CONF_EVENT_TYPE: "twist_button_event",
             event_trigger.CONF_EVENT_DATA: {
-                "device_id": twist_device_id,
+                "twist_id": twist_id,
                 "model_id": config[CONF_SUBTYPE],
                 "type": event_type,
             },
@@ -145,9 +152,8 @@ async def async_get_trigger_capabilities(
     """List trigger capabilities."""
     device_id = config[CONF_DEVICE_ID]
     _LOGGER.debug("Getting trigger capabilities for device_id: %s", device_id)
-    _twist_device_id, subtype_names = _get_button_info_by_device_id(hass, device_id)
+    _twist_id, subtype_names = _get_button_info_by_device_id(hass, device_id)
 
-    # Return the subtype mapping for the UI
     _LOGGER.debug(
         "Found %s buttons for device %s: %s",
         len(subtype_names),

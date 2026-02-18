@@ -1,4 +1,10 @@
-"""Platform for button integration."""
+"""Platform for button integration.
+
+ID terminology:
+- twist_id: The hardware device ID from the Twist API (int)
+- device_id: The Home Assistant device registry UUID (str)
+- model_id: The model index within a Twist device (int)
+"""
 
 from __future__ import annotations
 
@@ -45,7 +51,7 @@ async def async_setup_entry(
                 @callback
                 async def _fire_button_event(
                     btn_model,
-                    btn_device_id=device.twist_id,
+                    btn_twist_id=device.twist_id,
                     btn_model_id=model.model_id,
                 ):
                     """Fire an event for button press."""
@@ -62,11 +68,10 @@ async def async_setup_entry(
                         return
 
                     event_data = {
-                        "device_id": btn_device_id,
+                        "twist_id": btn_twist_id,
                         "model_id": btn_model_id,
                         "type": event_type,
                     }
-                    # Fire single event type for device triggers
                     hass.bus.async_fire("twist_button_event", event_data)
 
                 await model.register_update_cb(_fire_button_event)
