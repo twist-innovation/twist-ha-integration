@@ -31,16 +31,17 @@ async def async_setup_entry(
             if model is None:
                 continue
             if isinstance(model, TwistButton):
-                # Create device registry entry only if part of a product
-                if hasattr(model, "product_name") and model.product_name is not None:
-                    device_registry.async_get_or_create(
-                        config_entry_id=config_entry.entry_id,
-                        identifiers={(DOMAIN, model.product_name)},
-                        manufacturer="Twist Innovation",
-                        name=model.product_name,
-                    )
+                # Only create entries for models that are part of a product
+                if not hasattr(model, "product_name") or model.product_name is None:
+                    continue
 
-                # Register callback to fire events for ALL buttons (even without product_name)
+                device_registry.async_get_or_create(
+                    config_entry_id=config_entry.entry_id,
+                    identifiers={(DOMAIN, model.product_name)},
+                    manufacturer="Twist Innovation",
+                    name=model.product_name,
+                )
+
                 @callback
                 async def _fire_button_event(
                     btn_model,
@@ -48,13 +49,9 @@ async def async_setup_entry(
                     btn_model_id=model.model_id,
                 ):
                     """Fire an event for button press."""
-                    event_type: str | None = None
-                    if hasattr(btn_model, "last_event") and btn_model.last_event is not None:
-                        last_event = btn_model.last_event
-                        event_type = getattr(last_event, "name", str(last_event)).lower()
-                    elif hasattr(btn_model, "state") and btn_model.state is not None:
-                        state = btn_model.state
-                        event_type = getattr(state, "name", str(state)).lower()
+                    if btn_model.last_event is None:
+                        return
+                    event_type = btn_model.last_event.name.lower()
 
                     if event_type not in BUTTON_EVENT_TYPES:
                         _LOGGER.debug(
