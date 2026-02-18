@@ -31,11 +31,6 @@ async def async_setup_entry(
             if isinstance(model, TwistRelay):
                 # Only create entities for models that are part of a product
                 if not hasattr(model, "product_name") or model.product_name is None:
-                    # Still register callback to avoid crashes, but don't create entity
-                    async def _dummy_callback(m):
-                        pass
-
-                    await model.register_update_cb(_dummy_callback)
                     continue
 
                 switch_entity = TwistSwitch(model, config_entry)
