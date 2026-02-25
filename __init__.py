@@ -3,28 +3,17 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
 
-from twist import TwistAPI
-
-from homeassistant import config_entries
 from homeassistant.components import mqtt
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import config_validation as cv
-
-from .const import DOMAIN
-
-if TYPE_CHECKING:
-    from homeassistant.config_entries import ConfigType
+from twist import TwistAPI
 
 type TwistConfigEntry = ConfigEntry[TwistAPI]
 
 _LOGGER = logging.getLogger(__name__)
-
-CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 PLATFORMS: list[Platform] = [
     Platform.BUTTON,
@@ -33,11 +22,6 @@ PLATFORMS: list[Platform] = [
     Platform.SENSOR,
     Platform.SWITCH,
 ]
-
-
-async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up the Twist component."""
-    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: TwistConfigEntry) -> bool:
@@ -50,20 +34,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: TwistConfigEntry) -> boo
             installation_uuid=entry.data["installation_uuid"],
         )
 
-        # Fetch models from backend first (this sets installation_id and installation_name)
+        # Fetch models from backend (this sets installation_id and installation_name)
         models = await twist_api.get_models()
 
-        # Update config entry title with installation name
-        if twist_api.installation_name and entry.title != twist_api.installation_name:
-            hass.config_entries.async_update_entry(
-                entry, title=twist_api.installation_name
-            )
-
         _LOGGER.info(
-            "Loaded %d models from Twist installation '%s' (ID: %s)",
+            "Loaded %d models from Twist installation '%s'",
             len(models),
-            twist_api.installation_name or entry.data["installation_uuid"],
-            twist_api.installation_id,
+            entry.title,
         )
 
         # Set up MQTT publish/subscribe functions

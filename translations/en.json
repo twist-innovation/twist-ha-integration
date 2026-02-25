@@ -1,60 +1,37 @@
 {
-    "config": {
-        "abort": {
-            "already_configured": "Device is already configured"
-        },
-        "error": {
-            "cannot_connect": "Failed to connect",
-            "invalid_auth": "Invalid authentication",
-            "unknown": "Unexpected error"
-        },
-        "step": {
-            "user": {
-                "data": {
-                    "api_key": "API key",
-                    "server_url": "Server URL"
-                }
-            }
-        }
+  "title": "Twist",
+  "config": {
+    "abort": {
+      "already_configured": "Device is already configured"
     },
-    "services": {
-        "set_parameter": {
-            "description": "Set a custom parameter on a Twist device.",
-            "fields": {
-                "device_id": {
-                    "description": "The Twist device ID.",
-                    "name": "Device ID"
-                },
-                "model_index": {
-                    "description": "The model index of the device.",
-                    "name": "Model index"
-                },
-                "parameter_index": {
-                    "description": "The parameter index to set.",
-                    "name": "Parameter index"
-                },
-                "value": {
-                    "description": "The value to set for the parameter.",
-                    "name": "Value"
-                }
-            },
-            "name": "Set parameter"
-        }
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "no_devices": "No devices found",
+      "unknown": "Unexpected error"
     },
-    "device_automation": {
-        "trigger_type": {
-            "push": "Pushed",
-            "release": "Released",
-            "long_push": "Long pressed",
-            "long_release": "Long press released",
-            "double_push": "Double clicked",
-            "double_release": "Double click released",
-            "double_long_push": "Double long pressed",
-            "double_long_release": "Double long press released"
-        },
-        "extra_fields": {
-            "subtype": "Button"
+    "step": {
+      "user": {
+        "data": {
+          "backend_url": "Backend URL",
+          "api_key": "API key",
+          "installation_uuid": "Installation UUID"
         }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "push": "Pushed",
+      "release": "Released",
+      "long_push": "Long pressed",
+      "long_release": "Long press released",
+      "double_push": "Double clicked",
+      "double_release": "Double click released",
+      "double_long_push": "Double long pressed",
+      "double_long_release": "Double long press released"
     },
-    "title": "Twist"
+    "extra_fields": {
+      "subtype": "Button"
+    }
+  }
 }

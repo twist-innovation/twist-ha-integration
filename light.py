@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 
-import logging
 from typing import Any
-
-from twist.TwistLight import TwistLight
-from twist.TwistRgb import TwistRgb
 
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
@@ -19,6 +15,8 @@ from homeassistant.components.light import (
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from twist.TwistLight import TwistLight
+from twist.TwistRgb import TwistRgb
 
 from . import TwistConfigEntry
 from .const import DOMAIN
@@ -42,16 +40,12 @@ async def async_setup_entry(
             if isinstance(model, (TwistLight, TwistRgb)):
                 # Only create entities for models that are part of a product
                 if not hasattr(model, "product_name") or model.product_name is None:
-                    # Still register callback to avoid crashes, but don't create entity
-                    async def _dummy_callback(m):
-                        pass
-                    await model.register_update_cb(_dummy_callback)
                     continue
 
                 light_entity = TwistLightEntity(model, config_entry)
                 lights.append(light_entity)
                 # Register callback before adding entity to avoid race condition with MQTT
-                await model.register_update_cb(light_entity._handle_update)
+                await model.register_update_cb(light_entity.handle_update)
 
     async_add_entities(lights)
 
@@ -92,7 +86,7 @@ class TwistLightEntity(LightEntity):
         await super().async_added_to_hass()
         # Callback already registered in async_setup_entry before entity creation
 
-    async def _handle_update(self, model: Any) -> None:
+    async def handle_update(self, model: Any) -> None:
         """Handle updated data from the device."""
         self.async_write_ha_state()
 

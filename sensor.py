@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from twist.TwistBinarySensor import TwistBinarySensor
-from twist.TwistTemperature import TwistTemperature
-
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from twist.TwistBinarySensor import TwistBinarySensor
+from twist.TwistTemperature import TwistTemperature
 
 from . import TwistConfigEntry
 from .const import DOMAIN
@@ -33,17 +32,12 @@ async def async_setup_entry(
             if isinstance(model, (TwistTemperature, TwistBinarySensor)):
                 # Only create entities for models that are part of a product
                 if not hasattr(model, "product_name") or model.product_name is None:
-                    # Still register callback to avoid crashes, but don't create entity
-                    async def _dummy_callback(m):
-                        pass
-
-                    await model.register_update_cb(_dummy_callback)
                     continue
 
                 sensor_entity = TwistSensorEntity(model, config_entry)
                 sensors.append(sensor_entity)
                 # Register callback before adding entity to avoid race condition with MQTT
-                await model.register_update_cb(sensor_entity._handle_update)
+                await model.register_update_cb(sensor_entity.handle_update)
 
     async_add_entities(sensors)
 
@@ -77,7 +71,7 @@ class TwistSensorEntity(SensorEntity):
         await super().async_added_to_hass()
         # Callback already registered in async_setup_entry before entity creation
 
-    async def _handle_update(self, model: Any) -> None:
+    async def handle_update(self, model: Any) -> None:
         """Handle updated data from the device."""
         self.async_write_ha_state()
 
