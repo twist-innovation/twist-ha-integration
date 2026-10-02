@@ -10,6 +10,7 @@ from homeassistant.components.cover import (
     CoverEntityFeature,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from twist.TwistGarage import TwistGarage
@@ -51,17 +52,27 @@ class TwistCover(CoverEntity):
 
     _attr_has_entity_name = True
     _attr_should_poll = False
-    _attr_supported_features = (
-        CoverEntityFeature.OPEN
-        | CoverEntityFeature.CLOSE
-        | CoverEntityFeature.STOP
-        | CoverEntityFeature.SET_POSITION
-    )
 
     def __init__(self, model: TwistShutter | TwistGarage, config_entry) -> None:
         """Initialize the cover."""
         self._model = model
         self._config_entry = config_entry
+
+        if isinstance(model, TwistShutter):
+            self._attr_supported_features = (
+                CoverEntityFeature.OPEN
+                | CoverEntityFeature.CLOSE
+                | CoverEntityFeature.STOP
+                | CoverEntityFeature.SET_POSITION
+            )
+        else:
+            # TwistGarage has no set_value() - the protocol has no
+            # proportional position control, only open/close/toggle.
+            self._attr_supported_features = (
+                CoverEntityFeature.OPEN
+                | CoverEntityFeature.CLOSE
+                | CoverEntityFeature.STOP
+            )
 
         # Use device twist_id + model_id for truly unique ID
         device_id = self._model.parent_device.twist_id
@@ -94,13 +105,19 @@ class TwistCover(CoverEntity):
         return self._model.actual_state == 0
 
     @property
-    def is_closing(self) -> bool:
+    def is_closing(self) -> bool | None:
         """Return if the cover is closing or not."""
+        if not isinstance(self._model, TwistShutter):
+            # TwistGarage never receives a meaningful requested_state from
+            # the firmware, so a transient direction can't be derived.
+            return None
         return self._model.actual_state > self._model.requested_state
 
     @property
-    def is_opening(self) -> bool:
+    def is_opening(self) -> bool | None:
         """Return if the cover is opening or not."""
+        if not isinstance(self._model, TwistShutter):
+            return None
         return self._model.actual_state < self._model.requested_state
 
     async def async_open_cover(self, **kwargs: Any) -> None:
@@ -113,6 +130,10 @@ class TwistCover(CoverEntity):
 
     async def async_set_cover_position(self, **kwargs: Any) -> None:
         """Set the cover position."""
+        if not isinstance(self._model, TwistShutter):
+            raise HomeAssistantError(
+                "This cover does not support setting a specific position"
+            )
         await self._model.set_value(kwargs[ATTR_POSITION])
 
     async def async_stop_cover(self, **kwargs: Any) -> None:
