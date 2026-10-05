@@ -50,14 +50,6 @@ The integration validates the connection and fetches your device list before com
 ## Troubleshooting
 
 - **Entities unavailable / not updating** — confirm the MQTT integration is set up and reachable from Home Assistant, and that your Twist gateway is publishing to the same broker.
-- **Covers appear to move the wrong direction** — shutter position is derived from firmware-reported state; if this ever looks inverted for your installation, check `custom_components/twist/cover.py`'s `TwistCover` position handling before assuming it's a backend issue.
-- Enable debug logging for more detail:
-  ```yaml
-  logger:
-    default: info
-    logs:
-      custom_components.twist: debug
-  ```
 
 ## Contributing
 
