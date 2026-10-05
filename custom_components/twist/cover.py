@@ -97,11 +97,16 @@ class TwistCover(CoverEntity):
     @property
     def current_cover_position(self) -> int | None:
         """Return the current position of the cover."""
+        if isinstance(self._model, TwistShutter):
+            # Shutter firmware reports actual_state inverted: 100 = closed, 0 = open.
+            return 100 - self._model.actual_state
         return self._model.actual_state
 
     @property
     def is_closed(self) -> bool:
-        """Return if the cover is closed, same as position 0."""
+        """Return if the cover is closed."""
+        if isinstance(self._model, TwistShutter):
+            return self._model.actual_state == 100
         return self._model.actual_state == 0
 
     @property
@@ -111,14 +116,14 @@ class TwistCover(CoverEntity):
             # TwistGarage never receives a meaningful requested_state from
             # the firmware, so a transient direction can't be derived.
             return None
-        return self._model.actual_state > self._model.requested_state
+        return self._model.actual_state < self._model.requested_state
 
     @property
     def is_opening(self) -> bool | None:
         """Return if the cover is opening or not."""
         if not isinstance(self._model, TwistShutter):
             return None
-        return self._model.actual_state < self._model.requested_state
+        return self._model.actual_state > self._model.requested_state
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
@@ -134,7 +139,7 @@ class TwistCover(CoverEntity):
             raise HomeAssistantError(
                 "This cover does not support setting a specific position"
             )
-        await self._model.set_value(kwargs[ATTR_POSITION])
+        await self._model.set_value(100 - kwargs[ATTR_POSITION])
 
     async def async_stop_cover(self, **kwargs: Any) -> None:
         """Stop the cover."""
