@@ -133,6 +133,18 @@ class TwistCover(CoverEntity):
         """Close the cover."""
         await self._model.close()
 
+    async def async_toggle(self, **kwargs: Any) -> None:
+        """Toggle the cover.
+
+        HA's default maps toggle to open/close based on is_closed, which
+        makes the garage ignore it when the door isn't fully closed. The
+        garage has a native toggle event, so always send that.
+        """
+        if isinstance(self._model, TwistGarage):
+            await self._model.toggle()
+            return
+        await super().async_toggle(**kwargs)
+
     async def async_set_cover_position(self, **kwargs: Any) -> None:
         """Set the cover position."""
         if not isinstance(self._model, TwistShutter):
