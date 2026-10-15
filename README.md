@@ -11,6 +11,7 @@ Home Assistant integration for [Twist Innovation](https://twist-innovation.com) 
 - **Lights** — dimmers and RGB fixtures, with brightness and HS color support.
 - **Switches** — generic on/off outputs.
 - **Sensors** — device telemetry reported by your installation (e.g. temperature, current).
+- **Channel select** — every model gets a configuration select to switch its active channel (set of links).
 - **Buttons & device triggers** — physical Twist push-buttons are exposed as HA button events (`push`, `release`, `long_push`, `long_release`, `double_push`, `double_release`, `double_long_push`, `double_long_release`) so you can build automations directly off a wall switch.
 - Devices are grouped by product, and entities update in real time over MQTT (`local_push`) rather than polling.
 
